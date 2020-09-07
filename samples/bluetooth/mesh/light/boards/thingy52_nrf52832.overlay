@@ -37,7 +37,7 @@
 			gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
 			label = "BAT_CHG_STAT";
 		};
-    	usb_detect {
+    	usbdetect: usb_detect {
 			gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
 			label = "USB_DETECT";
 		};
