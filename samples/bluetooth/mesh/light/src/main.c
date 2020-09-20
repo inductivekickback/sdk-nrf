@@ -30,6 +30,11 @@ static const u8_t           m_led_pin   = DT_GPIO_PIN(DT_NODELABEL(led0),   gpio
 static const u32_t          m_led_flags = DT_GPIO_FLAGS(DT_NODELABEL(led0), gpios);
 static struct device       *m_led_dev;
 
+static const char * const   m_relay_ctrl_port  = DT_GPIO_LABEL(DT_NODELABEL(relay_ctrl), gpios);
+static const u8_t           m_relay_ctrl_pin   = DT_GPIO_PIN(DT_NODELABEL(relay_ctrl),   gpios);
+static const u32_t          m_relay_ctrl_flags = DT_GPIO_FLAGS(DT_NODELABEL(relay_ctrl), gpios);
+static struct device       *m_relay_ctrl_dev;
+
 
 static void input_changed(struct device *dev, struct gpio_callback *cb, u32_t pins)
 {
@@ -70,7 +75,12 @@ static int gpio_init(void)
     }
 
     m_led_dev = device_get_binding(m_led_port);
-    if (!m_button_dev) {
+    if (!m_led_dev) {
+        return -ENODEV;
+    }
+
+    m_relay_ctrl_dev = device_get_binding(m_relay_ctrl_port);
+    if (!m_relay_ctrl_dev) {
         return -ENODEV;
     }
 
@@ -85,6 +95,11 @@ static int gpio_init(void)
     }
 
     ret = gpio_pin_configure(m_led_dev, m_led_pin, (GPIO_OUTPUT | m_led_flags));
+    if (ret != 0) {
+        return ret;
+    }
+
+    ret = gpio_pin_configure(m_relay_ctrl_dev, m_relay_ctrl_pin, (GPIO_OUTPUT | m_relay_ctrl_flags));
     if (ret != 0) {
         return ret;
     }
