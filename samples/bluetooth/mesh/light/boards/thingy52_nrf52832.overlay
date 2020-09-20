@@ -20,7 +20,7 @@
 			gpios = <&sx1509b 7 GPIO_ACTIVE_LOW>;
 			label = "Red LED";
 		};
-		vdd_pwr_ctrl {
+		VDD_PWR_CTRL: vdd_pwr_ctrl {
 			gpios = <&gpio0 30 GPIO_ACTIVE_HIGH>;
 			label = "VDD_PWR_CTRL";
 		};
@@ -33,11 +33,11 @@
 			gpios = <&gpio0 11 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "Button";
 		};
-    	bat_chg_stat {
+    	BAT_CHG_STATE: bat_chg_stat {
 			gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
 			label = "BAT_CHG_STAT";
 		};
-    	usbdetect: usb_detect {
+    	USB_DETECT: usb_detect {
 			gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
 			label = "USB_DETECT";
 		};
