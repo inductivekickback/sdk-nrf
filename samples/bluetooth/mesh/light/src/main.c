@@ -25,9 +25,9 @@ static struct device       *m_button_dev;
 
 static struct gpio_callback m_gpio_cb_data;
 
-static const char * const   m_led_port  = DT_GPIO_LABEL(DT_NODELABEL(led0), gpios);
-static const u8_t           m_led_pin   = DT_GPIO_PIN(DT_NODELABEL(led0),   gpios);
-static const u32_t          m_led_flags = DT_GPIO_FLAGS(DT_NODELABEL(led0), gpios);
+static const char * const   m_led_port  = DT_GPIO_LABEL(DT_NODELABEL(led2), gpios);
+static const u8_t           m_led_pin   = DT_GPIO_PIN(DT_NODELABEL(led2),   gpios);
+static const u32_t          m_led_flags = DT_GPIO_FLAGS(DT_NODELABEL(led2), gpios);
 static struct device       *m_led_dev;
 
 static const char * const   m_relay_ctrl_port  = DT_GPIO_LABEL(DT_NODELABEL(relay_ctrl), gpios);
@@ -163,7 +163,12 @@ int main(void)
         goto err_exit;
 	}
 
+    return 0;
+
 err_exit:
+    
     /* TODO: Put the system into a safe state and then go to system_off? */
+    gpio_pin_set(m_led_dev, m_led_pin, 1);
+
     return err;
 }
