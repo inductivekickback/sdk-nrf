@@ -1,13 +1,18 @@
 /*
- * Copyright (c) 2019 Nordic Semiconductor ASA
+ * Copyright (c) 2020 Daniel Veilleux
  *
  * SPDX-License-Identifier: LicenseRef-BSD-5-Clause-Nordic
  */
 
+#include <drivers/gpio.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/mesh/models.h>
-#include <dk_buttons_and_leds.h>
 #include "model_handler.h"
+
+static const char * const   m_attention_led_port  = DT_GPIO_LABEL(DT_NODELABEL(led1), gpios);
+static const u8_t           m_attention_led_pin   = DT_GPIO_PIN(DT_NODELABEL(led1),   gpios);
+static const u32_t          m_attention_led_flags = DT_GPIO_FLAGS(DT_NODELABEL(led1), gpios);
+static struct device       *m_attention_led_dev;
 
 static void led_set(struct bt_mesh_onoff_srv *srv, struct bt_mesh_msg_ctx *ctx,
 		    const struct bt_mesh_onoff_set *set,
@@ -41,7 +46,9 @@ static void led_transition_start(struct led_ctx *led)
 	/* As long as the transition is in progress, the onoff
 	 * state is "on":
 	 */
-	dk_set_led(led_idx, true);
+
+	/* TODO: This is either directed at the fog machine or the status LED. */
+	//dk_set_led(led_idx, true);
 	k_delayed_work_submit(&led->work, K_MSEC(led->remaining));
 	led->remaining = 0;
 }
@@ -75,7 +82,8 @@ static void led_set(struct bt_mesh_onoff_srv *srv, struct bt_mesh_msg_ctx *ctx,
 	} else if (set->transition->time > 0) {
 		led_transition_start(led);
 	} else {
-		dk_set_led(led_idx, set->on_off);
+		/* TODO: This is either directed at the fog machine or the status LED. */
+		//dk_set_led(led_idx, set->on_off);
 	}
 
 respond:
@@ -100,7 +108,8 @@ static void led_work(struct k_work *work)
 	if (led->remaining) {
 		led_transition_start(led);
 	} else {
-		dk_set_led(led_idx, led->value);
+		/* TODO: This is either directed at the fog machine or the status LED. */
+		//dk_set_led(led_idx, led->value);
 
 		/* Publish the new value at the end of the transition */
 		struct bt_mesh_onoff_status status;
@@ -130,15 +139,12 @@ static struct k_delayed_work attention_blink_work;
 
 static void attention_blink(struct k_work *work)
 {
-	static int idx;
-	const u8_t pattern[] = {
-		BIT(0) | BIT(1),
-		BIT(1) | BIT(2),
-		BIT(2) | BIT(3),
-		BIT(3) | BIT(0),
-	};
-	dk_set_leds(pattern[idx++ % ARRAY_SIZE(pattern)]);
-	k_delayed_work_submit(&attention_blink_work, K_MSEC(30));
+	static bool state=true;
+	if (m_attention_led_dev) {
+		gpio_pin_set(m_attention_led_dev, m_attention_led_pin, state);
+		state = !state;
+	}
+	k_delayed_work_submit(&attention_blink_work, K_MSEC(100));
 }
 
 static void attention_on(struct bt_mesh_model *mod)
@@ -149,7 +155,9 @@ static void attention_on(struct bt_mesh_model *mod)
 static void attention_off(struct bt_mesh_model *mod)
 {
 	k_delayed_work_cancel(&attention_blink_work);
-	dk_set_leds(DK_NO_LEDS_MSK);
+	if (m_attention_led_dev) {
+		gpio_pin_set(m_attention_led_dev, m_attention_led_pin, 0);
+	}
 }
 
 static const struct bt_mesh_health_srv_cb health_srv_cb = {
@@ -193,6 +201,13 @@ const struct bt_mesh_comp *model_handler_init(void)
 
 	for (int i = 0; i < ARRAY_SIZE(led_ctx); ++i) {
 		k_delayed_work_init(&led_ctx[i].work, led_work);
+	}
+
+    m_attention_led_dev = device_get_binding(m_attention_led_port);
+    if (m_attention_led_dev) {
+	    (void) gpio_pin_configure(m_attention_led_dev,
+	    	                      m_attention_led_pin,
+	    	                      (GPIO_OUTPUT | m_attention_led_flags));
 	}
 
 	return &comp;

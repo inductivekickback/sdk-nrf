@@ -9,7 +9,6 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/mesh/models.h>
 #include <bluetooth/mesh/dk_prov.h>
-#include <dk_buttons_and_leds.h>
 #include "model_handler.h"
 
 
@@ -25,10 +24,10 @@ static struct device       *m_button_dev;
 
 static struct gpio_callback m_gpio_cb_data;
 
-static const char * const   m_led_port  = DT_GPIO_LABEL(DT_NODELABEL(led2), gpios);
-static const u8_t           m_led_pin   = DT_GPIO_PIN(DT_NODELABEL(led2),   gpios);
-static const u32_t          m_led_flags = DT_GPIO_FLAGS(DT_NODELABEL(led2), gpios);
-static struct device       *m_led_dev;
+static const char * const   m_err_led_port  = DT_GPIO_LABEL(DT_NODELABEL(led2), gpios);
+static const u8_t           m_err_led_pin   = DT_GPIO_PIN(DT_NODELABEL(led2),   gpios);
+static const u32_t          m_err_led_flags = DT_GPIO_FLAGS(DT_NODELABEL(led2), gpios);
+static struct device       *m_err_led_dev;
 
 static const char * const   m_relay_ctrl_port  = DT_GPIO_LABEL(DT_NODELABEL(relay_ctrl), gpios);
 static const u8_t           m_relay_ctrl_pin   = DT_GPIO_PIN(DT_NODELABEL(relay_ctrl),   gpios);
@@ -74,8 +73,8 @@ static int gpio_init(void)
         return -ENODEV;
     }
 
-    m_led_dev = device_get_binding(m_led_port);
-    if (!m_led_dev) {
+    m_err_led_dev = device_get_binding(m_err_led_port);
+    if (!m_err_led_dev) {
         return -ENODEV;
     }
 
@@ -94,7 +93,7 @@ static int gpio_init(void)
         return ret;
     }
 
-    ret = gpio_pin_configure(m_led_dev, m_led_pin, (GPIO_OUTPUT | m_led_flags));
+    ret = gpio_pin_configure(m_err_led_dev, m_err_led_pin, (GPIO_OUTPUT | m_err_led_flags));
     if (ret != 0) {
         return ret;
     }
@@ -133,9 +132,6 @@ static void bt_ready(int err)
         return;
     }
 
-    dk_leds_init();
-    dk_buttons_init(NULL);
-
     err = bt_mesh_init(bt_mesh_dk_prov_init(), model_handler_init());
     if (err) {
         return;
@@ -168,7 +164,7 @@ int main(void)
 err_exit:
     
     /* TODO: Put the system into a safe state and then go to system_off? */
-    gpio_pin_set(m_led_dev, m_led_pin, 1);
+    gpio_pin_set(m_err_led_dev, m_err_led_pin, 1);
 
     return err;
 }
