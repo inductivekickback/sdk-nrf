@@ -10,6 +10,7 @@
 #include <bluetooth/mesh/models.h>
 #include <bluetooth/mesh/dk_prov.h>
 #include "model_handler.h"
+#include "fogger.h"
 
 static const char * const   m_button_port  = DT_GPIO_LABEL(DT_NODELABEL(button0), gpios);
 static const u8_t           m_button_pin   = DT_GPIO_PIN(DT_NODELABEL(button0),   gpios);
@@ -23,6 +24,8 @@ static const u8_t           m_err_led_pin   = DT_GPIO_PIN(DT_NODELABEL(led2),   
 static const u32_t          m_err_led_flags = DT_GPIO_FLAGS(DT_NODELABEL(led2), gpios);
 static struct device       *m_err_led_dev;
 
+static bool m_button_pressed;
+
 static void input_changed(struct device *dev, struct gpio_callback *cb, u32_t pins)
 {
     /* The pins variable is a mask that describes pins in the form (1<<PIN_NUMBER). */
@@ -31,9 +34,11 @@ static void input_changed(struct device *dev, struct gpio_callback *cb, u32_t pi
     if (dev == m_button_dev && (pins & BIT(m_button_pin))) {
         val = gpio_pin_get(dev, m_button_pin);
         if (val) {
-            printk("Button high");
+            m_button_pressed = true;
+            fogger_start();
         } else {
-            printk("Button low");
+            m_button_pressed = false;
+            fogger_stop();
         }
     }
 }
@@ -101,6 +106,32 @@ void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
     k_fatal_halt(reason);
 }
 
+void fogger_callback(enum fogger_state status)
+{
+    // TODO: State needs to be forwarded to model handler.
+
+    switch (status) {
+    case FOGGER_STATE_HEATING:
+        model_handler_elem_update(0, false);
+        model_handler_elem_update(1, false);
+        break;
+    case FOGGER_STATE_READY:
+        if (m_button_pressed) {
+            fogger_start();
+        }
+        model_handler_elem_update(0, false);
+        model_handler_elem_update(1, true);
+        break;
+    case FOGGER_STATE_FOGGING:
+        model_handler_elem_update(0, true);
+        model_handler_elem_update(1, true);
+        break;
+    default:
+        k_oops();
+        break;
+    }
+}
+
 int main(void)
 {
 	int err;
@@ -110,10 +141,17 @@ int main(void)
         k_oops();
     }
 
+    m_button_pressed = gpio_pin_get(m_button_dev, m_button_pin);
+
 	err = bt_enable(bt_ready);
 	if (err) {
         k_oops();
 	}
+
+    err = fogger_init(&fogger_callback);
+    if (err) {
+        k_oops();
+    }
 
     return 0;
 }
