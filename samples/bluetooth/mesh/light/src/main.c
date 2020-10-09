@@ -11,12 +11,6 @@
 #include <bluetooth/mesh/dk_prov.h>
 #include "model_handler.h"
 
-
-static const char * const   m_usb_detect_port  = DT_GPIO_LABEL(DT_NODELABEL(usb_detect), gpios);
-static const u8_t           m_usb_detect_pin   = DT_GPIO_PIN(DT_NODELABEL(usb_detect),   gpios);
-static const u32_t          m_usb_detect_flags = DT_GPIO_FLAGS(DT_NODELABEL(usb_detect), gpios);
-static struct device       *m_usb_detect_dev;
-
 static const char * const   m_button_port  = DT_GPIO_LABEL(DT_NODELABEL(button0), gpios);
 static const u8_t           m_button_pin   = DT_GPIO_PIN(DT_NODELABEL(button0),   gpios);
 static const u32_t          m_button_flags = DT_GPIO_FLAGS(DT_NODELABEL(button0), gpios);
@@ -29,28 +23,13 @@ static const u8_t           m_err_led_pin   = DT_GPIO_PIN(DT_NODELABEL(led2),   
 static const u32_t          m_err_led_flags = DT_GPIO_FLAGS(DT_NODELABEL(led2), gpios);
 static struct device       *m_err_led_dev;
 
-static const char * const   m_relay_ctrl_port  = DT_GPIO_LABEL(DT_NODELABEL(relay_ctrl), gpios);
-static const u8_t           m_relay_ctrl_pin   = DT_GPIO_PIN(DT_NODELABEL(relay_ctrl),   gpios);
-static const u32_t          m_relay_ctrl_flags = DT_GPIO_FLAGS(DT_NODELABEL(relay_ctrl), gpios);
-static struct device       *m_relay_ctrl_dev;
-
-
 static void input_changed(struct device *dev, struct gpio_callback *cb, u32_t pins)
 {
     /* The pins variable is a mask that describes pins in the form (1<<PIN_NUMBER). */
     int val;
 
-    if (dev == m_usb_detect_dev && (pins & BIT(m_usb_detect_pin))) {
-        val = gpio_pin_get(dev, m_usb_detect_pin);
-        if (val) {
-            printk("USB_DETECT high");
-        } else {
-            printk("USB_DETECT low");
-        }
-    }
-
     if (dev == m_button_dev && (pins & BIT(m_button_pin))) {
-        val = gpio_pin_get(dev, m_usb_detect_pin);
+        val = gpio_pin_get(dev, m_button_pin);
         if (val) {
             printk("Button high");
         } else {
@@ -63,11 +42,6 @@ static int gpio_init(void)
 {
 	int ret;
 
-	m_usb_detect_dev = device_get_binding(m_usb_detect_port);
-	if (!m_usb_detect_dev) {
-		return -ENODEV;
-	}
-
     m_button_dev = device_get_binding(m_button_port);
     if (!m_button_dev) {
         return -ENODEV;
@@ -77,16 +51,6 @@ static int gpio_init(void)
     if (!m_err_led_dev) {
         return -ENODEV;
     }
-
-    m_relay_ctrl_dev = device_get_binding(m_relay_ctrl_port);
-    if (!m_relay_ctrl_dev) {
-        return -ENODEV;
-    }
-
-	ret = gpio_pin_configure(m_usb_detect_dev, m_usb_detect_pin, (GPIO_INPUT | m_usb_detect_flags));
-	if (ret != 0) {
-		return ret;
-	}
 
     ret = gpio_pin_configure(m_button_dev, m_button_pin, (GPIO_INPUT | m_button_flags));
     if (ret != 0) {
@@ -98,18 +62,6 @@ static int gpio_init(void)
         return ret;
     }
 
-    ret = gpio_pin_configure(m_relay_ctrl_dev, m_relay_ctrl_pin, (GPIO_OUTPUT | m_relay_ctrl_flags));
-    if (ret != 0) {
-        return ret;
-    }
-
-	ret = gpio_pin_interrupt_configure(m_usb_detect_dev,
-                                       m_usb_detect_pin,
-                                       GPIO_INT_EDGE_BOTH);
-	if (ret != 0) {
-		return ret;
-	}
-
     ret = gpio_pin_interrupt_configure(m_button_dev,
                                        m_button_pin,
                                        GPIO_INT_EDGE_BOTH);
@@ -117,11 +69,8 @@ static int gpio_init(void)
         return ret;
     }
 
-    u32_t pin_mask = (BIT(m_usb_detect_pin) | BIT(m_button_pin));
-	gpio_init_callback(&m_gpio_cb_data, input_changed, pin_mask);
-
-    gpio_add_callback(m_usb_detect_dev, &m_gpio_cb_data);
-    gpio_add_callback(m_button_dev,     &m_gpio_cb_data);
+	gpio_init_callback(&m_gpio_cb_data, input_changed, BIT(m_button_pin));
+    gpio_add_callback(m_button_dev, &m_gpio_cb_data);
 
     return 0;
 }
@@ -145,26 +94,26 @@ static void bt_ready(int err)
     bt_mesh_prov_enable(BT_MESH_PROV_ADV | BT_MESH_PROV_GATT);
 }
 
+void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
+{
+    /* TODO: Put the system into a safe state and then go to system_off? */
+    gpio_pin_set(m_err_led_dev, m_err_led_pin, 1);
+    k_fatal_halt(reason);
+}
+
 int main(void)
 {
 	int err;
 
     err = gpio_init();
     if (err) {
-        goto err_exit;
+        k_oops();
     }
 
 	err = bt_enable(bt_ready);
 	if (err) {
-        goto err_exit;
+        k_oops();
 	}
 
     return 0;
-
-err_exit:
-    
-    /* TODO: Put the system into a safe state and then go to system_off? */
-    gpio_pin_set(m_err_led_dev, m_err_led_pin, 1);
-
-    return err;
 }
