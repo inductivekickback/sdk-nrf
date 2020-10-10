@@ -99,11 +99,11 @@ static void bt_ready(int err)
     bt_mesh_prov_enable(BT_MESH_PROV_ADV | BT_MESH_PROV_GATT);
 }
 
-void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
+static void oops(void)
 {
     /* TODO: Put the system into a safe state and then go to system_off? */
     gpio_pin_set(m_err_led_dev, m_err_led_pin, 1);
-    k_fatal_halt(reason);
+    k_oops();
 }
 
 void fogger_callback(enum fogger_state status)
@@ -127,7 +127,7 @@ void fogger_callback(enum fogger_state status)
         model_handler_elem_update(1, true);
         break;
     default:
-        k_oops();
+        oops();
         break;
     }
 }
@@ -138,19 +138,19 @@ int main(void)
 
     err = gpio_init();
     if (err) {
-        k_oops();
+        oops();
     }
 
     m_button_pressed = gpio_pin_get(m_button_dev, m_button_pin);
 
 	err = bt_enable(bt_ready);
 	if (err) {
-        k_oops();
+        oops();
 	}
 
     err = fogger_init(&fogger_callback);
     if (err) {
-        k_oops();
+        oops();
     }
 
     return 0;
