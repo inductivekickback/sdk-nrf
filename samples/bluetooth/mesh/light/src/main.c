@@ -80,14 +80,23 @@ static int gpio_init(void)
     return 0;
 }
 
+static void oops(void)
+{
+    /* TODO: Put the system into a safe state and then go to system_off? */
+    gpio_pin_set(m_err_led_dev, m_err_led_pin, 1);
+    k_oops();
+}
+
 static void bt_ready(int err)
 {
     if (err) {
+        oops();
         return;
     }
 
     err = bt_mesh_init(bt_mesh_dk_prov_init(), model_handler_init());
     if (err) {
+        oops();
         return;
     }
 
@@ -97,13 +106,6 @@ static void bt_ready(int err)
 
     /* This will be a no-op if settings_load() loaded provisioning info */
     bt_mesh_prov_enable(BT_MESH_PROV_ADV | BT_MESH_PROV_GATT);
-}
-
-static void oops(void)
-{
-    /* TODO: Put the system into a safe state and then go to system_off? */
-    gpio_pin_set(m_err_led_dev, m_err_led_pin, 1);
-    k_oops();
 }
 
 void fogger_callback(enum fogger_state status)
