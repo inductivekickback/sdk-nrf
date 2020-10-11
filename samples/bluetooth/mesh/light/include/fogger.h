@@ -13,6 +13,7 @@ enum fogger_state {
 	FOGGER_STATE_FOGGING
 };
 
+/* Called whenever the fogger changes state */
 typedef void (*fogger_status_cb)(enum fogger_state);
 
 /**
@@ -21,7 +22,7 @@ typedef void (*fogger_status_cb)(enum fogger_state);
  * @retval  0 success
  * @retval -2 GPIO init failed
  */
-int fogger_init(fogger_status_cb status_cb);
+int fogger_init(fogger_status_cb p_status_cb);
 
 /**
  * @brief Get the current state of the fogger
@@ -29,7 +30,7 @@ int fogger_init(fogger_status_cb status_cb);
  * @retval -1 module has not been initialized
  * @retval -2 state is NULL
  */
-int fogger_state_get(enum fogger_state *state);
+int fogger_state_get(enum fogger_state *p_state);
 
 /**
  * @brief Start producing fog, if possible

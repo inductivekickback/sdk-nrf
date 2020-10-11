@@ -20,19 +20,25 @@ extern "C" {
 
 #define ELEMENT_COUNT 2
 
+/* Called whenever an element receives a 'set' command */
+typedef void (*model_handler_set_cb)(uint8_t elem_indx, bool status);
+
 /**
  * @brief Initialize GPIO and workqueue items
+ *
+ * @retval  0 success
+ * @retval -1 set_cb is NULL
  */
-const struct bt_mesh_comp *model_handler_init(void);
+const int model_handler_init(const struct bt_mesh_comp **p_comp, model_handler_set_cb p_set_cb);
 
 /**
  * @brief Set the specified element's status
  *
- * @retval  0 Success
+ * @retval  0 success
  * @retval -1 module has not been initialized
  * @retval -2 element_index is invalid
  */
-int model_handler_elem_update(uint8_t element_indx, bool status);
+int model_handler_elem_update(uint8_t elem_indx, bool status);
 
 #ifdef __cplusplus
 }

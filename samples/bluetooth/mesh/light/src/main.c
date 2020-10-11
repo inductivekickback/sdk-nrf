@@ -12,6 +12,12 @@
 #include "model_handler.h"
 #include "fogger.h"
 
+
+enum fogger_elem {
+    FOGGER_ELEM_BUTTON,
+    FOGGER_ELEM_READY
+};
+
 static const char * const   m_button_port  = DT_GPIO_LABEL(DT_NODELABEL(button0), gpios);
 static const u8_t           m_button_pin   = DT_GPIO_PIN(DT_NODELABEL(button0),   gpios);
 static const u32_t          m_button_flags = DT_GPIO_FLAGS(DT_NODELABEL(button0), gpios);
@@ -30,6 +36,8 @@ static void input_changed(struct device *dev, struct gpio_callback *cb, u32_t pi
 {
     /* The pins variable is a mask that describes pins in the form (1<<PIN_NUMBER). */
     int val;
+
+    // TODO: This will be called from interrupt priority 5.
 
     if (dev == m_button_dev && (pins & BIT(m_button_pin))) {
         val = gpio_pin_get(dev, m_button_pin);
@@ -87,14 +95,92 @@ static void oops(void)
     k_oops();
 }
 
+void model_handler_callback(uint8_t elem_indx, bool status)
+{
+    // TODO: This could be called from threads with -1 or -8 priority.
+    switch (elem_indx) {
+    case FOGGER_ELEM_BUTTON:
+        if (status) {
+            fogger_start();
+        } else {
+            fogger_stop();
+        }
+        break;
+    case FOGGER_ELEM_READY:
+        // TODO: Either ignore or cache the status and reply immediately wtih the actual value.
+        break;
+    default:
+        oops();
+    }
+}
+
+void fogger_callback(enum fogger_state status)
+{
+    int err;
+
+    switch (status) {
+    case FOGGER_STATE_HEATING:
+        err = model_handler_elem_update(FOGGER_ELEM_BUTTON, false);
+        if (err) {
+            oops();
+            return;
+        }
+        err = model_handler_elem_update(FOGGER_ELEM_READY, false);
+        if (err) {
+            oops();
+            return;
+        }
+        break;
+    case FOGGER_STATE_READY:
+        if (m_button_pressed) {
+            fogger_start();
+        }
+        err = model_handler_elem_update(FOGGER_ELEM_BUTTON, false);
+        if (err) {
+            oops();
+            return;
+        }
+        err = model_handler_elem_update(FOGGER_ELEM_READY, true);
+        if (err) {
+            oops();
+            return;
+        }
+        break;
+    case FOGGER_STATE_FOGGING:
+        err = model_handler_elem_update(FOGGER_ELEM_BUTTON, true);
+        if (err) {
+            oops();
+            return;
+        }
+        err = model_handler_elem_update(FOGGER_ELEM_READY, true);
+        if (err) {
+            oops();
+            return;
+        }
+        break;
+    default:
+        oops();
+        break;
+    }
+}
+
 static void bt_ready(int err)
 {
+    const struct bt_mesh_comp *p_comp;
+    enum fogger_state          state;
+
     if (err) {
         oops();
         return;
     }
 
-    err = bt_mesh_init(bt_mesh_dk_prov_init(), model_handler_init());
+    err = model_handler_init(&p_comp, &model_handler_callback);
+    if (err) {
+        oops();
+        return;
+    }
+
+    err = bt_mesh_init(bt_mesh_dk_prov_init(), p_comp);
     if (err) {
         oops();
         return;
@@ -106,32 +192,14 @@ static void bt_ready(int err)
 
     /* This will be a no-op if settings_load() loaded provisioning info */
     bt_mesh_prov_enable(BT_MESH_PROV_ADV | BT_MESH_PROV_GATT);
-}
 
-void fogger_callback(enum fogger_state status)
-{
-    // TODO: State needs to be forwarded to model handler.
-
-    switch (status) {
-    case FOGGER_STATE_HEATING:
-        model_handler_elem_update(0, false);
-        model_handler_elem_update(1, false);
-        break;
-    case FOGGER_STATE_READY:
-        if (m_button_pressed) {
-            fogger_start();
-        }
-        model_handler_elem_update(0, false);
-        model_handler_elem_update(1, true);
-        break;
-    case FOGGER_STATE_FOGGING:
-        model_handler_elem_update(0, true);
-        model_handler_elem_update(1, true);
-        break;
-    default:
+    err = fogger_state_get(&state);
+    if (err) {
         oops();
-        break;
+        return;
     }
+
+    fogger_callback(state);
 }
 
 int main(void)
@@ -145,15 +213,15 @@ int main(void)
 
     m_button_pressed = gpio_pin_get(m_button_dev, m_button_pin);
 
-	err = bt_enable(bt_ready);
-	if (err) {
-        oops();
-	}
-
     err = fogger_init(&fogger_callback);
     if (err) {
         oops();
     }
+
+	err = bt_enable(bt_ready);
+	if (err) {
+        oops();
+	}
 
     return 0;
 }

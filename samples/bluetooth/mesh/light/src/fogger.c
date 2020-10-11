@@ -14,9 +14,14 @@ static struct device       *m_usb_detect_dev;
 
 static struct gpio_callback m_gpio_cb_data;
 
+/*
 static const char * const   m_relay_ctrl_port  = DT_GPIO_LABEL(DT_NODELABEL(relay_ctrl), gpios);
 static const u8_t           m_relay_ctrl_pin   = DT_GPIO_PIN(DT_NODELABEL(relay_ctrl),   gpios);
 static const u32_t          m_relay_ctrl_flags = DT_GPIO_FLAGS(DT_NODELABEL(relay_ctrl), gpios);
+*/
+static const char * const   m_relay_ctrl_port  = DT_GPIO_LABEL(DT_NODELABEL(led0), gpios);
+static const u8_t           m_relay_ctrl_pin   = DT_GPIO_PIN(DT_NODELABEL(led0),   gpios);
+static const u32_t          m_relay_ctrl_flags = DT_GPIO_FLAGS(DT_NODELABEL(led0), gpios);
 static struct device       *m_relay_ctrl_dev;
 
 static bool             m_initialized = false;
@@ -142,22 +147,22 @@ int fogger_stop(void)
     return 0;
 }
 
-int fogger_state_get(enum fogger_state *state)
+int fogger_state_get(enum fogger_state *p_state)
 {
     if (!m_initialized) {
         return -1;
     }
 
-    if (NULL == state) {
+    if (NULL == p_state) {
         return -2;
     }
 
-    *state = status_get();
+    *p_state = status_get();
 
     return 0;
 }
 
-int fogger_init(fogger_status_cb status_cb)
+int fogger_init(fogger_status_cb p_status_cb)
 {
     int err = gpio_init();
     if (err) {
@@ -168,7 +173,7 @@ int fogger_init(fogger_status_cb status_cb)
 
     m_relay_engaged  = false;
     m_machine_ready  = gpio_pin_get(m_usb_detect_dev, m_usb_detect_pin);
-    m_status_cb      = status_cb;
+    m_status_cb      = p_status_cb;
     m_initialized    = true;
 
     return 0;

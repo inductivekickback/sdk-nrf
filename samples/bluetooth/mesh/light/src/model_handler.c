@@ -10,7 +10,8 @@
 #include "model_handler.h"
 
 
-static bool m_initialized = false;
+static bool                 m_initialized = false;
+static model_handler_set_cb m_set_cb = NULL;
 
 static const char * const   m_attention_led_port  = DT_GPIO_LABEL(DT_NODELABEL(led1), gpios);
 static const u8_t           m_attention_led_pin   = DT_GPIO_PIN(DT_NODELABEL(led1),   gpios);
@@ -36,7 +37,7 @@ struct led_ctx {
     bool value;
 };
 
-static struct led_ctx led_ctx[2] = {
+static struct led_ctx led_ctx[ELEMENT_COUNT] = {
     [0 ... 1] = {
         .srv = BT_MESH_ONOFF_SRV_INIT(&onoff_handlers),
     }
@@ -50,8 +51,7 @@ static void led_transition_start(struct led_ctx *led)
      * state is "on":
      */
 
-    /* TODO: This is either directed at the fog machine or the status LED. */
-    //dk_set_led(led_idx, true);
+    m_set_cb(led_idx, 1);
     k_delayed_work_submit(&led->work, K_MSEC(led->remaining));
     led->remaining = 0;
 }
@@ -85,8 +85,7 @@ static void led_set(struct bt_mesh_onoff_srv *srv, struct bt_mesh_msg_ctx *ctx,
     } else if (set->transition->time > 0) {
         led_transition_start(led);
     } else {
-        /* TODO: This is either directed at the fog machine or the status LED. */
-        //dk_set_led(led_idx, set->on_off);
+        m_set_cb(led_idx, set->on_off);
     }
 
 respond:
@@ -111,8 +110,7 @@ static void led_work(struct k_work *work)
     if (led->remaining) {
         led_transition_start(led);
     } else {
-        /* TODO: This is either directed at the fog machine or the status LED. */
-        //dk_set_led(led_idx, led->value);
+        m_set_cb(led_idx, led->value);
 
         /* Publish the new value at the end of the transition */
         struct bt_mesh_onoff_status status;
@@ -192,23 +190,40 @@ static const struct bt_mesh_comp comp = {
     .elem_count = ARRAY_SIZE(elements),
 };
 
-int model_handler_elem_update(uint8_t element_indx, bool status)
+int model_handler_elem_update(uint8_t elem_indx, bool status)
 {
+    struct bt_mesh_onoff_status onoff_status;
+    struct led_ctx *led;
+
     if (!m_initialized) {
         return -1;
     }
 
-    if (ELEMENT_COUNT <= element_indx) {
+    if (ELEMENT_COUNT <= elem_indx) {
         return -2;
     }
 
-    // TODO: bt_mesh_onoff_srv_pub(&led->srv, NULL, &status);
+    led            = &led_ctx[elem_indx];
+    led->value     = status;
+    led->remaining = 0;
+
+    onoff_status.remaining_time = 0;
+    onoff_status.target_on_off  = status;
+    onoff_status.present_on_off = status;
+
+    bt_mesh_onoff_srv_pub(&led->srv, NULL, &onoff_status);
 
     return 0;
 };
 
-const struct bt_mesh_comp *model_handler_init(void)
+const int model_handler_init(const struct bt_mesh_comp **p_comp, model_handler_set_cb p_set_cb)
 {
+    if (NULL == p_set_cb) {
+        return -1;
+    }
+
+    *p_comp = &comp;
+
     k_delayed_work_init(&attention_blink_work, attention_blink);
 
     for (int i = 0; i < ARRAY_SIZE(led_ctx); ++i) {
@@ -222,7 +237,8 @@ const struct bt_mesh_comp *model_handler_init(void)
                                   (GPIO_OUTPUT | m_attention_led_flags));
     }
 
+    m_set_cb      = p_set_cb;
     m_initialized = true;
 
-    return &comp;
+    return 0;
 }
