@@ -32,22 +32,51 @@ static struct device       *m_err_led_dev;
 
 static bool m_button_pressed;
 
+static void oops(void);
+static void fogger_callback(enum fogger_state status);
+
+/**
+ * NOTE: The system workqueue is used to send commands to the fogger module to prevent the button
+ *       handler ISR from preempting the BT_RX thread. This also prevents the fogger_status_cb
+ *       from being executed in ISR context.
+ */
+static struct k_work fogger_start_work;
+static struct k_work fogger_stop_work;
+static struct k_work fogger_status_work;
+
+static void workq_fogger_start(struct k_work *item)
+{
+    fogger_start();
+}
+
+static void workq_fogger_stop(struct k_work *item)
+{
+    fogger_stop();
+}
+
+static void workq_fogger_status(struct k_work *item)
+{
+    int err;
+    enum fogger_state state;
+
+    err = fogger_state_get(&state);
+    if (err) {
+        oops();
+        return;
+    }
+
+    fogger_callback(state);
+}
+
 static void input_changed(struct device *dev, struct gpio_callback *cb, u32_t pins)
 {
-    /* The pins variable is a mask that describes pins in the form (1<<PIN_NUMBER). */
-    int val;
-
-    // TODO: This will be called from interrupt priority 5.
-
-    if (dev == m_button_dev && (pins & BIT(m_button_pin))) {
-        val = gpio_pin_get(dev, m_button_pin);
-        if (val) {
-            m_button_pressed = true;
-            fogger_start();
-        } else {
-            m_button_pressed = false;
-            fogger_stop();
-        }
+    int val = gpio_pin_get(dev, m_button_pin);
+    if (val) {
+        m_button_pressed = true;
+        k_work_submit(&fogger_start_work);
+    } else {
+        m_button_pressed = false;
+        k_work_submit(&fogger_stop_work);
     }
 }
 
@@ -95,26 +124,27 @@ static void oops(void)
     k_oops();
 }
 
-void model_handler_callback(uint8_t elem_indx, bool status)
+static void model_handler_callback(uint8_t elem_indx, bool status)
 {
-    // TODO: This could be called from threads with -1 or -8 priority.
     switch (elem_indx) {
     case FOGGER_ELEM_BUTTON:
         if (status) {
-            fogger_start();
+            k_work_submit(&fogger_start_work);
         } else {
-            fogger_stop();
+            k_work_submit(&fogger_stop_work);
         }
         break;
     case FOGGER_ELEM_READY:
-        // TODO: Either ignore or cache the status and reply immediately wtih the actual value.
+        /* Writing to this element doesn't have any effect. Immediately generate a status
+           callback to ensure that the value in the mesh is up-to-date. */
+        k_work_submit(&fogger_status_work);
         break;
     default:
         oops();
     }
 }
 
-void fogger_callback(enum fogger_state status)
+static void fogger_callback(enum fogger_state status)
 {
     int err;
 
@@ -133,7 +163,7 @@ void fogger_callback(enum fogger_state status)
         break;
     case FOGGER_STATE_READY:
         if (m_button_pressed) {
-            fogger_start();
+            k_work_submit(&fogger_start_work);
         }
         err = model_handler_elem_update(FOGGER_ELEM_BUTTON, false);
         if (err) {
@@ -167,7 +197,6 @@ void fogger_callback(enum fogger_state status)
 static void bt_ready(int err)
 {
     const struct bt_mesh_comp *p_comp;
-    enum fogger_state          state;
 
     if (err) {
         oops();
@@ -193,18 +222,16 @@ static void bt_ready(int err)
     /* This will be a no-op if settings_load() loaded provisioning info */
     bt_mesh_prov_enable(BT_MESH_PROV_ADV | BT_MESH_PROV_GATT);
 
-    err = fogger_state_get(&state);
-    if (err) {
-        oops();
-        return;
-    }
-
-    fogger_callback(state);
+    k_work_submit(&fogger_status_work);
 }
 
 int main(void)
 {
 	int err;
+
+    k_work_init(&fogger_start_work, workq_fogger_start);
+    k_work_init(&fogger_stop_work,  workq_fogger_stop);
+    k_work_init(&fogger_status_work,workq_fogger_status);
 
     err = gpio_init();
     if (err) {

@@ -192,9 +192,6 @@ static const struct bt_mesh_comp comp = {
 
 int model_handler_elem_update(uint8_t elem_indx, bool status)
 {
-    struct bt_mesh_onoff_status onoff_status;
-    struct led_ctx *led;
-
     if (!m_initialized) {
         return -1;
     }
@@ -203,16 +200,17 @@ int model_handler_elem_update(uint8_t elem_indx, bool status)
         return -2;
     }
 
+    struct led_ctx *led;
     led            = &led_ctx[elem_indx];
     led->value     = status;
     led->remaining = 0;
 
+    struct bt_mesh_onoff_status onoff_status;
     onoff_status.remaining_time = 0;
     onoff_status.target_on_off  = status;
     onoff_status.present_on_off = status;
 
     bt_mesh_onoff_srv_pub(&led->srv, NULL, &onoff_status);
-
     return 0;
 };
 
