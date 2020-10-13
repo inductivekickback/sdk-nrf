@@ -3,7 +3,7 @@ The purpose of this project is to replace the wired remote control that comes wi
 ![Fog machine with new remote]()
 
 ### About
-Cheap fog machines usually have a wired remote control with a single button and an LED that indicates that the machine is ready to produce fog. Unfortunately, the simplicity of these machines makes hacking them more complicated. This project replaces the original remote control with a project box that mimics the original button and LED functionality. Inside the box a 5V wall wort is used to allow the Thingy:52 to both detect when the fog machine is ready and recharge the Thingy:52's battery. A relay replaces the original remote control's button to put the Thingy:52 into control without exposing it to AC.
+Cheap fog machines usually have a wired remote control with a button and an LED. The LED is used to indicate that the machine is currently at an adequate temperature to produce fog. This project replaces the original remote control with a project box that mimics the original button and LED functionality. Inside the box a 5V wall wort is used to allow the Thingy:52 to both detect when the fog machine is ready and recharge the Thingy:52's battery. The Thingy:52's battery allows it to continue operating in the periods where the fog machine is reheating. A relay replaces the original remote control's button to put the Thingy:52 in control without exposing it to AC.
 
 The firmware exposes two mesh elements:
   1. Element 1
