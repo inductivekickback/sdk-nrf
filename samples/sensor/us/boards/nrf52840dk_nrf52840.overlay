@@ -1,0 +1,13 @@
+/ {
+
+    sensors {
+
+        us0: hc-sr04 {
+            compatible = "elecfreaks,hc-sr04";
+            label = "HC-SR04_0";
+            trig-gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
+            echo-gpios = <&gpio0 27 GPIO_ACTIVE_HIGH>;
+            status = "okay";
+        };
+    };
+};
