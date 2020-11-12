@@ -55,11 +55,6 @@ static int hc_sr04_channel_get(const struct device *dev,
 {
     const struct hc_sr04_data *p_data = dev->data;
 
-    if (unlikely(!m_shared_resources.ready)) {
-        LOG_WRN("Device is not initialized yet");
-        return -EBUSY;
-    }
-
     switch (chan) {
     case SENSOR_CHAN_DISTANCE:
         val->val2 = p_data->sensor_value.val2;
