@@ -11,9 +11,34 @@
 #include <sys/__assert.h>
 #include <string.h>
 
+static int measure(const struct device *dev)
+{
+    int ret;
+    struct sensor_value distance;
+
+    ret = sensor_sample_fetch_chan(dev, SENSOR_CHAN_ALL);
+    switch (ret) {
+    case 0:
+        ret = sensor_channel_get(dev, SENSOR_CHAN_DISTANCE, &distance);
+        if (ret) {
+            printk("sensor_channel_get failed ret %d", ret);
+            return ret;
+        }
+        printk("%s: %d.%02dM", dev->name, (distance.val1 / 1000000), (distance.val2 / 10000));
+        break;
+    case -EIO:
+        printk("%s: Could not read device", dev->name);
+        break;
+    default:
+        printk("Error when reading device: %s", dev->name);
+        break;
+    }
+    return 0;
+}
 
 void main(void)
 {
+    int ret;
 	const struct device *dev;
 
 	if (IS_ENABLED(CONFIG_LOG_BACKEND_RTT)) {
@@ -21,15 +46,14 @@ void main(void)
 		k_sleep(K_MSEC(500));
 	}
 
-    size_t len = z_device_get_all_static(&dev);
-    const struct device *dev_end = dev + len;
-    while (dev < dev_end) {
-        if (z_device_ready(dev)
-            && (dev->name != NULL)
-            && (strlen(dev->name) != 0)) {
-            printk("Found device: %s\r\n", dev->name);
-        }
-        dev++;
+    dev = device_get_binding("HC-SR04_0");
+    if (dev == NULL) {
+        printk("Failed to get dev binding");
+        return;
     }
 
+    ret = measure(dev);
+    if (ret) {
+        printk("Failed to fetch and get measurement");
+    }
 }
