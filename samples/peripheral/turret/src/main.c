@@ -10,6 +10,8 @@
 #include <nrfx_pwm.h>
 #include <dk_buttons_and_leds.h>
 
+#include "dynasty.h"
+
 #define LOG_MODULE_NAME app
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
@@ -23,33 +25,8 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define DUTY_CYCLE_50    		(TICKS_PER_PERIOD / 2)
 #define REFRESH_COUNT_400US    	14
 
-
-/*
- * BLUE pistol, shotgun, rocket.
- * 0  0  0  0_ 0  0  0  0_ 0  0  0 _1 
- * 0  0  0  0_ 0  0  0  1  0  0  0 _1_
- * 0  0  0  0_ 0  0  0  1_ 0  0  1  0 
- */
-#define PREAMBLE DUTY_CYCLE_50,DUTY_CYCLE_50,DUTY_CYCLE_50,DUTY_CYCLE_50
-#define SH       DUTY_CYCLE_50
-#define LH       DUTY_CYCLE_50,DUTY_CYCLE_50
-#define SL       DUTY_CYCLE_0
-#define LL       DUTY_CYCLE_0,DUTY_CYCLE_0
-#define PREFIX   PREAMBLE,SL,SH,SL,SH,SL,SH,SL,SH,LL,SH,LL,SH,LL,SH,LL,SH,SL,SH,SL,SH,SL,SH
-#define END      DUTY_CYCLE_0
-
-/*
- * NOTE: These values must be in RAM due to EasyDMA limitations.
- */
-static uint16_t BLUE_PISTOL_CMD[] = {PREFIX, END};
-
 static nrfx_pwm_t m_pwm = NRFX_PWM_INSTANCE(0);
-static nrf_pwm_sequence_t m_seq = {
-    .values.p_common = NULL,
-    .length          = 0,
-    .repeats         = REFRESH_COUNT_400US,
-    .end_delay       = 0
-};
+
 
 static void m_button_changed(uint32_t button_state, uint32_t has_changed)
 {
@@ -95,8 +72,16 @@ static nrfx_err_t m_pwm_config(void)
 	return nrfx_pwm_init(&m_pwm, &config, m_pwm_handler, NULL);
 }
 
-static void m_blast(uint16_t *data, uint32_t len)
+static void m_blast(uint32_t refresh_count, const uint16_t *data, uint32_t len)
 {
+    static nrf_pwm_sequence_t m_seq = {
+        .values.p_common = NULL,
+        .length          = 0,
+        .repeats         = 0,
+        .end_delay       = 0
+    };
+
+    m_seq.repeats         = refresh_count;
     m_seq.values.p_common = data;
     m_seq.length          = len;
     nrfx_pwm_simple_playback(&m_pwm,
@@ -120,10 +105,20 @@ void main(void)
 	LOG_INF("Turret started.");
 
 	while (true) {
-		m_blast(&BLUE_PISTOL_CMD[0], NRF_PWM_VALUES_LENGTH(BLUE_PISTOL_CMD));
+		int      err;
+		uint32_t refresh_count;
+		const uint16_t *data;
+		uint32_t len;
+
+		err = dynasty_cmd_get(DYNASTY_TEAM_BLUE, DYNASTY_WEAPON_PISTOL, &refresh_count, &data, &len);
+		if (err) {
+			LOG_ERR("dynasty_cmd_get failed: %d", err);
+		}
+
+		m_blast(refresh_count, data, len);
 		dk_set_led_on(DK_LED1);
-		k_sleep(K_MSEC(50));
+		k_sleep(K_MSEC(1000));
  		dk_set_led_off(DK_LED1);
-		k_sleep(K_MSEC(50));
+		k_sleep(K_MSEC(1000));
 	}
 }
