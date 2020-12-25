@@ -7,21 +7,14 @@
 
 #include "dynasty.h"
 
-
 /*
- * Dynasty laser tag blaster IR codes.
+ * Dynasty Toys laser tag blaster IR codes
  */
 #define TICKS_PER_PERIOD    211
 #define DUTY_CYCLE_0        TICKS_PER_PERIOD
 #define DUTY_CYCLE_50       (TICKS_PER_PERIOD / 2)
 #define REFRESH_COUNT_400US 15
 
-/*
- * BLUE pistol, shotgun, rocket.
- * 0  0  0  0_ 0  0  0  0_ 0  0  0 _1 
- * 0  0  0  0_ 0  0  0  1  0  0  0 _1_
- * 0  0  0  0_ 0  0  0  1_ 0  0  1  0 
- */
 #define PREAMBLE DUTY_CYCLE_50,DUTY_CYCLE_50,DUTY_CYCLE_50,DUTY_CYCLE_50
 #define SHORT_1  DUTY_CYCLE_50
 #define LONG_1   DUTY_CYCLE_50,DUTY_CYCLE_50
@@ -132,8 +125,6 @@ int dynasty_cmd_get(enum dynasty_team team, enum dynasty_weapon weapon,
     default:
         return -1;
     }
-
     *refresh_count = REFRESH_COUNT_400US;
-
     return 0;
 }

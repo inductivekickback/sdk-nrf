@@ -9,6 +9,18 @@
 extern "C" {
 #endif
 
+/*
+ * Empirical measurements:
+ *
+ * Preamble:   ~1.6ms
+ * Short high: [0.36, 0.41]ms
+ * Long high:  [0.72, 0.75]ms
+ * Short low:  [0.40, 0.44]ms
+ * Long low:   [0.74, 0.8]ms
+ * ------------------------------
+ * Total length is [20.0, 20.8]ms
+ */
+
 #define DYNASTY_HP							9
 
 #define DYNASTY_PISTOL_SHOT_COUNT			12
