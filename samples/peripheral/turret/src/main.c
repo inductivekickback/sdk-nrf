@@ -10,7 +10,7 @@
 #include <nrfx_pwm.h>
 #include <dk_buttons_and_leds.h>
 
-#include "dynasty.h"
+#include "dynasty_toys.h"
 
 #define LOG_MODULE_NAME app
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);

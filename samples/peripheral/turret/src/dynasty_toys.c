@@ -5,7 +5,7 @@
 
 #include <nrfx_pwm.h>
 
-#include "dynasty.h"
+#include "dynasty_toys.h"
 
 /*
  * Dynasty Toys laser tag blaster IR codes
