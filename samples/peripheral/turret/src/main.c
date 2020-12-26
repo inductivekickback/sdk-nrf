@@ -11,6 +11,7 @@
 #include <dk_buttons_and_leds.h>
 
 #include "dynasty_toys.h"
+#include "laser_x.h"
 
 #define LOG_MODULE_NAME app
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
@@ -26,7 +27,6 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define REFRESH_COUNT_400US    	14
 
 static nrfx_pwm_t m_pwm = NRFX_PWM_INSTANCE(0);
-
 
 static void m_button_changed(uint32_t button_state, uint32_t has_changed)
 {
@@ -105,19 +105,26 @@ void main(void)
 	LOG_INF("Turret started.");
 
 	while (true) {
-		int      err;
-		uint32_t refresh_count;
+		int             err;
+		uint32_t        refresh_count;
 		const uint16_t *data;
-		uint32_t len;
+		uint32_t        len;
 
 		err = dynasty_cmd_get(DYNASTY_TEAM_BLUE, DYNASTY_WEAPON_PISTOL, &refresh_count, &data, &len);
 		if (err) {
 			LOG_ERR("dynasty_cmd_get failed: %d", err);
 		}
-
 		m_blast(refresh_count, data, len);
+
 		dk_set_led_on(DK_LED1);
 		k_sleep(K_MSEC(1000));
+
+		err = laser_x_cmd_get(LASER_X_TEAM_BLUE, &refresh_count, &data, &len);
+		if (err) {
+			LOG_ERR("laser_x_cmd_get failed: %d", err);
+		}
+		m_blast(refresh_count, data, len);
+
  		dk_set_led_off(DK_LED1);
 		k_sleep(K_MSEC(1000));
 	}
