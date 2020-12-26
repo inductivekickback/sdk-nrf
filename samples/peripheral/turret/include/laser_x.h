@@ -9,6 +9,19 @@
 extern "C" {
 #endif
 
+/*
+ * Empirical measurements:
+ *
+ * Preamble:     ~6ms
+ * Short high    [0.40, 0.48]ms
+ * Short low:    [0.52, 0.57]ms
+ * Long low:     [1.47, 1.56]ms
+ * ------------------------------
+ * Total length: [16.7, 17.6]ms
+ *
+ * NOTE: Assumes an 8MHz clock so the 37.9KHz period is ~211 ticks.
+ */
+
 /* NOTE: Blasters regenerate 1 hitpoint per minute if they are not shot. */
 #define LASER_X_HP		8
 

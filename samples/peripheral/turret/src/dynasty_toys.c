@@ -25,7 +25,7 @@
 #define LS       LONG_0,SHORT_1
 #define LL       LONG_0,LONG_1
 #define PREFIX   PREAMBLE,SS,SS,SS,SS,LS,LS,LS,LS
-#define END      DUTY_CYCLE_0
+#define END      SHORT_0
 
 /*
  * NOTE: These values must be in RAM due to EasyDMA limitations.
