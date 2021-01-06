@@ -117,7 +117,7 @@ void main(void)
 		m_blast(refresh_count, data, len);
 
 		dk_set_led_on(DK_LED1);
-		k_sleep(K_MSEC(1000));
+		k_sleep(K_MSEC(200));
 
 		err = laser_x_cmd_get(LASER_X_TEAM_BLUE, &refresh_count, &data, &len);
 		if (err) {
@@ -126,6 +126,6 @@ void main(void)
 		m_blast(refresh_count, data, len);
 
  		dk_set_led_off(DK_LED1);
-		k_sleep(K_MSEC(1000));
+		k_sleep(K_MSEC(200));
 	}
 }
