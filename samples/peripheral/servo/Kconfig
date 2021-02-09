@@ -1,0 +1,45 @@
+#
+# Copyright (c) 2020 Daniel Veilleux
+#
+# SPDX-License-Identifier: LicenseRef-BSD-5-Clause-Nordic
+#
+
+source "Kconfig.zephyr"
+
+menu "Ultrasonic sensor sample"
+
+choice
+	prompt "PWM peripheral"
+	default USE_PWM0
+	help
+		Selects which PWM peripheral to use:
+		-  PWM0
+		-  PWM1
+		-  PWM2
+		-  PWM3
+	config USE_PWM0
+		bool "PWM0"
+	  select NRFX_PWM0
+	  select NRFX_PWM
+	config USE_PWM1
+		bool "PWM1"
+	  select NRFX_PWM1
+ 	  select NRFX_PWM
+	config USE_PWM2
+		bool "PWM2"
+	  select NRFX_PWM2
+  	  select NRFX_PWM
+	config USE_PWM3
+		bool "PWM3"
+	  select NRFX_PWM3
+  	  select NRFX_PWM
+endchoice
+
+config PWM_PERIPH_IDX
+	int
+	default 0 if USE_PWM0
+	default 1 if USE_PWM1
+	default 2 if USE_PWM2
+	default 3 if USE_PWM3
+
+endmenu
