@@ -1,0 +1,19 @@
+# Nordic servo
+#
+# Copyright (c) 2021 Daniel Veilleux
+#
+# SPDX-License-Identifier: LicenseRef-BSD-5-Clause-Nordic
+#
+
+menuconfig NORDIC_SERVO
+	bool "Nordic servo"
+	help
+	  Enable Nordic servo driver
+
+if NORDIC_SERVO
+
+module = NORDIC_SERVO
+module-str = NORDIC-SERVO
+source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
+
+endif #NORDIC_SERVO
