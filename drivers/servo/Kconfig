@@ -12,6 +12,12 @@ menuconfig NORDIC_SERVO
 
 if NORDIC_SERVO
 
+config SERVO_INIT_PRIORITY
+	int "Servo init priority"
+	default 90
+	help
+	  Servo initialization priority
+
 module = NORDIC_SERVO
 module-str = NORDIC-SERVO
 source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"

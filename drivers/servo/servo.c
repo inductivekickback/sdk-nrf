@@ -50,7 +50,7 @@ static struct nordic_servo_shared_resources {
 
 struct nordic_servo_data {
 	uint8_t value;
-}
+};
 
 struct nordic_servo_cfg {
     uint32_t pin;
@@ -90,14 +90,14 @@ ERR_EXIT:
 
 static int nordic_servo_write(const struct device *dev, uint8_t value)
 {
-    const struct nordic_servo_data *p_data = dev->data;
+    struct nordic_servo_data *p_data = dev->data;
 
     if (unlikely(!m_shared_resources.ready)) {
         LOG_WRN("Device is not initialized yet");
         return -EBUSY;
     }
 
-    p_data.value = value;
+    p_data->value = value;
 
     // TODO: Actually write it.
 
@@ -113,7 +113,7 @@ static int nordic_servo_read(const struct device *dev, uint8_t *value)
         return -EBUSY;
     }
 
-    *value = p_data.value;
+    *value = p_data->value;
 
     return 0;
 }
@@ -129,7 +129,7 @@ static const struct servo_driver_api nordic_servo_driver_api = {
 #define NORDIC_SERVO_DEVICE(n) \
     static const struct nordic_servo_cfg nordic_servo_cfg_##n = { \
         .pin = DT_PROP(INST(n), pin), \
-        .init_value = DT_PROP(INST(n), init_value) \
+        .init_value = DT_PROP(INST(n), init_value), \
         .value_indx = (DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) % NUM_PWM_PERIPHS), \
         .pwm_indx = (DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) / NUM_PWM_PERIPHS) \
     }; \
