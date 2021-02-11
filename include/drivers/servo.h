@@ -29,6 +29,8 @@ extern "C" {
 typedef int (*servo_init_t) (const struct device *dev);
 typedef int (*servo_write_t)(const struct device *dev, uint8_t  value);
 typedef int (*servo_read_t) (const struct device *dev, uint8_t *value);
+typedef int (*servo_start_t)(const struct device *dev);
+typedef int (*servo_stop_t) (const struct device *dev);
 
 /**
  * @brief Servo driver API
@@ -39,6 +41,8 @@ struct servo_driver_api {
 	servo_init_t  init;
 	servo_write_t write;
 	servo_read_t  read;
+	servo_start_t start;
+	servo_stop_t  stop;
 };
 
 static inline int servo_init(const struct device *dev)
@@ -87,6 +91,40 @@ static inline int servo_read(const struct device *dev, uint8_t *value)
 		return -ENOTSUP;
 	}
 	return api->read(dev, value);
+}
+
+
+static inline int servo_start(const struct device *dev)
+{
+	struct servo_driver_api *api;
+
+	if (dev == NULL) {
+		return -EINVAL;
+	}
+
+	api = (struct servo_driver_api*)dev->api;
+
+	if (api->start == NULL) {
+		return -ENOTSUP;
+	}
+	return api->start(dev);
+}
+
+
+static inline int servo_stop(const struct device *dev)
+{
+	struct servo_driver_api *api;
+
+	if (dev == NULL) {
+		return -EINVAL;
+	}
+
+	api = (struct servo_driver_api*)dev->api;
+
+	if (api->stop == NULL) {
+		return -ENOTSUP;
+	}
+	return api->stop(dev);
 }
 
 #ifdef __cplusplus
