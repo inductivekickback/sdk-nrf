@@ -16,24 +16,28 @@ if NORDIC_SERVO
 config NORDIC_SERVO_ALLOW_PWM0
 	bool "Allow PWM0"
 	default true
+    select NRFX_PWM0
 	help
 		Allow the driver to use PWM peripheral instance 0
 
 config NORDIC_SERVO_ALLOW_PWM1
 	bool "Allow PWM1"
 	default true
+    select NRFX_PWM1
 	help
 		Allow the driver to use PWM peripheral instance 1
 
 config NORDIC_SERVO_ALLOW_PWM2
 	bool "Allow PWM2"
 	default true
+    select NRFX_PWM2
 	help
 		Allow the driver to use PWM peripheral instance 2
 
 config NORDIC_SERVO_ALLOW_PWM3
 	bool "Allow PWM3"
 	default true
+    select NRFX_PWM3
 	help
 		Allow the driver to use PWM peripheral instance 3
 

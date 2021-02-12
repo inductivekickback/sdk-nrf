@@ -53,34 +53,34 @@ struct nordic_servo_cfg {
     uint8_t  init_value;
 };
 
-static servo_group_t m_available_pwms[] = {
+static servo_group_t m_avail_pwms[] = {
 #if CONFIG_NORDIC_SERVO_ALLOW_PWM0
 	{
-		.pwm_instance = NRFX_PWM_INSTANCE(0);
-        .ready        = false;
+		.pwm_instance = NRFX_PWM_INSTANCE(0),
+        .ready        = false,
     },
 #endif
 #if CONFIG_NORDIC_SERVO_ALLOW_PWM1
 	{
-		.pwm_instance = NRFX_PWM_INSTANCE(1);
-        .ready        = false;
+		.pwm_instance = NRFX_PWM_INSTANCE(1),
+        .ready        = false,
     },
 #endif
 #if CONFIG_NORDIC_SERVO_ALLOW_PWM2
 	{
-		.pwm_instance = NRFX_PWM_INSTANCE(2);
-        .ready        = false;
+		.pwm_instance = NRFX_PWM_INSTANCE(2),
+        .ready        = false,
     },
 #endif
 #if CONFIG_NORDIC_SERVO_ALLOW_PWM3
 	{
-		.pwm_instance = NRFX_PWM_INSTANCE(3);
-        .ready        = false;
+		.pwm_instance = NRFX_PWM_INSTANCE(3),
+        .ready        = false,
     },
 #endif
 };
 
-#define NUM_AVAIL_PWMS (sizeof(m_available_pwms) / sizeof(servo_group_t))
+#define NUM_AVAIL_PWMS (sizeof(m_avail_pwms)/sizeof(servo_group_t))
 
 static int m_channel_get(nrf_pwm_values_individual_t *p_values, uint8_t channel, uint8_t *p_value)
 {
@@ -139,8 +139,8 @@ static int m_channel_set(nrf_pwm_values_individual_t *p_values, uint8_t channel,
 
 static int m_nordic_servo_init(const struct device *dev)
 {
-    int           err;
-    nrfx_err_t    nrfx_err;
+    int        err;
+    nrfx_err_t nrfx_err;
 
     const struct nordic_servo_cfg *p_cfg  = dev->config;
     struct nordic_servo_data      *p_data = dev->data;
@@ -154,20 +154,20 @@ static int m_nordic_servo_init(const struct device *dev)
     	goto ERR_EXIT;
     }
 
-    if (!m_available_pwms[p_cfg->pwm_index].ready) {
+    if (!m_avail_pwms[p_cfg->pwm_index].ready) {
 
     	// TODO: Init the instance.
 
-	    err = k_mutex_init(&m_available_pwms[p_cfg->pwm_index].mutex);
+	    err = k_mutex_init(&m_avail_pwms[p_cfg->pwm_index].mutex);
 	    if (0 != err) {
 	        return err;
 	    }
 
-    	m_available_pwms[p_cfg->pwm_index].ready = true;
+    	m_avail_pwms[p_cfg->pwm_index].ready = true;
     }
 
     // TODO: Write intitial value to correct pwm register.
-    err = m_channel_set(&m_available_pwms[p_cfg->pwm_index].pwm_values,
+    err = m_channel_set(&m_avail_pwms[p_cfg->pwm_index].pwm_values,
                          p_cfg->pwm_channel,
                          p_cfg->init_value);
     if (0 != err) {
@@ -253,10 +253,10 @@ static const struct servo_driver_api m_nordic_servo_driver_api = {
 
 #define NORDIC_SERVO_DEVICE(n) \
     static const struct nordic_servo_cfg nordic_servo_cfg_##n = { \
-        .pin = DT_PROP(INST(n), pin), \
-        .init_value = DT_PROP(INST(n), init_value), \
-        .pwm_channel = (DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) % NRF_PWM_CHANNEL_COUNT), \
-        .pwm_index = (DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) / NRF_PWM_CHANNEL_COUNT) \
+        .pin         = DT_PROP(INST(n), pin), \
+        .init_value  = DT_PROP(INST(n), init_value), \
+        .pwm_channel = (n % NRF_PWM_CHANNEL_COUNT), \
+        .pwm_index   = (n / NRF_PWM_CHANNEL_COUNT) \
     }; \
     static struct nordic_servo_data nordic_servo_data_##n; \
     DEVICE_AND_API_INIT(nordic_servo_##n, \

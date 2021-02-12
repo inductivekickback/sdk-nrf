@@ -24,6 +24,17 @@ void main(void)
         k_sleep(K_MSEC(500));
     }
 
+    size_t len = z_device_get_all_static(&dev);
+    const struct device *dev_end = dev + len;
+    while (dev < dev_end) {
+        if (z_device_ready(dev)
+            && (dev->name != NULL)
+            && (strlen(dev->name) != 0)) {
+            LOG_INF("Found device: %s", dev->name);
+        }
+        dev++;
+    }
+
     dev = device_get_binding("SERVO_0");
     if (dev == NULL) {
         LOG_ERR("Failed to get dev binding");
