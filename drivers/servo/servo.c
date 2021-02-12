@@ -4,9 +4,6 @@
  * SPDX-License-Identifier: LicenseRef-BSD-5-Clause-Nordic
  */
 
-// TODO: Wait until the final device is configured before starting all the PWMs? Or
-//       is PSEL sufficient?
-
 #define DT_DRV_COMPAT nordic_servo
 
 #include <kernel.h>
@@ -44,8 +41,7 @@ typedef struct
 } servo_group_t;
 
 struct nordic_servo_data {
-	uint8_t value;
-	bool    ready;
+	bool ready;
 };
 
 struct nordic_servo_cfg {
@@ -139,8 +135,8 @@ static int m_channel_set(nrf_pwm_values_individual_t *p_values, uint8_t channel,
 
 static int m_nordic_servo_init(const struct device *dev)
 {
-    int        err;
-    nrfx_err_t nrfx_err;
+    int err;
+    nrfx_pwm_t *p_inst;
 
     const struct nordic_servo_cfg *p_cfg  = dev->config;
     struct nordic_servo_data      *p_data = dev->data;
@@ -154,9 +150,10 @@ static int m_nordic_servo_init(const struct device *dev)
     	goto ERR_EXIT;
     }
 
-    if (!m_avail_pwms[p_cfg->pwm_index].ready) {
+    p_inst = &m_avail_pwms[p_cfg->pwm_index].pwm_instance;
 
-    	// TODO: Init the instance.
+    if (!m_avail_pwms[p_cfg->pwm_index].ready) {
+    	nrfx_err_t nrfx_err;
         nrfx_pwm_config_t const pwm_config = {
             .output_pins = {
                 NRFX_PWM_PIN_NOT_USED,
@@ -172,7 +169,7 @@ static int m_nordic_servo_init(const struct device *dev)
             .step_mode    = NRF_PWM_STEP_AUTO
         };
     
-        nrfx_err = nrfx_pwm_init(&m_avail_pwms[p_cfg->pwm_index].pwm_instance, &pwm_config, NULL, NULL);
+        nrfx_err = nrfx_pwm_init(p_inst, &pwm_config, NULL, NULL);
         if (NRFX_SUCCESS != nrfx_err)
         {
             goto ERR_EXIT;
@@ -184,10 +181,7 @@ static int m_nordic_servo_init(const struct device *dev)
 	        .repeats             = 0,
 	        .end_delay           = 0
 	    };
-        err = nrfx_pwm_simple_playback(&m_avail_pwms[p_cfg->pwm_index].pwm_instance,
-                                        &seq,
-                                        1,
-                                        NRFX_PWM_FLAG_LOOP);
+        err = nrfx_pwm_simple_playback(p_inst, &seq, 1, NRFX_PWM_FLAG_LOOP);
 
     	/* NOTE: nrfx_pwm_simple_playback returns NULL instead of NRFX_SUCCESS. */
     	if (err) {
@@ -209,13 +203,11 @@ static int m_nordic_servo_init(const struct device *dev)
     	goto ERR_EXIT;
     }
 
-    p_data->value = p_cfg->init_value;
-    p_data->ready = true;
-
     nrf_gpio_pin_clear(p_cfg->pin);
     nrf_gpio_cfg_output(p_cfg->pin);
-    m_avail_pwms[p_cfg->pwm_index].pwm_instance.p_registers->PSEL.OUT[p_cfg->pwm_channel] = p_cfg->pin;
+    p_inst->p_registers->PSEL.OUT[p_cfg->pwm_channel] = p_cfg->pin;
 
+    p_data->ready = true;
     return 0;
 
 ERR_EXIT:
@@ -224,58 +216,58 @@ ERR_EXIT:
 
 static int m_nordic_servo_write(const struct device *dev, uint8_t value)
 {
-    struct nordic_servo_data *p_data = dev->data;
+	const struct nordic_servo_cfg *p_cfg  = dev->config;
+	struct nordic_servo_data      *p_data = dev->data;
 
     if (unlikely(!p_data->ready)) {
         LOG_WRN("Device is not initialized yet");
         return -EBUSY;
     }
 
-    // TODO: Use mutex.
-    p_data->value = value;
+    int err = k_mutex_lock(&m_avail_pwms[p_cfg->pwm_index].mutex, K_FOREVER);
+    if (0 != err) {
+        return err;
+    }
+
+    err = m_channel_set(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg->pwm_channel, value);
+    if (0 != err) {
+    	k_mutex_unlock(&m_avail_pwms[p_cfg->pwm_index].mutex);
+    	return err;
+    }
+
+    err = k_mutex_unlock(&m_avail_pwms[p_cfg->pwm_index].mutex);
+    if (0 != err) {
+        return err;
+    }
 
     return 0;
 }
 
 static int m_nordic_servo_read(const struct device *dev, uint8_t *value)
 {
-    const struct nordic_servo_data *p_data = dev->data;
+	const struct nordic_servo_cfg *p_cfg  = dev->config;
+	struct nordic_servo_data      *p_data = dev->data;
 
     if (unlikely(!p_data->ready)) {
         LOG_WRN("Device is not initialized yet");
         return -EBUSY;
     }
 
-    // TODO: Use mutex.
-    *value = p_data->value;
-
-    return 0;
-}
-
-static int m_nordic_servo_start(const struct device *dev)
-{
-    const struct nordic_servo_data *p_data = dev->data;
-
-    if (unlikely(!p_data->ready)) {
-        LOG_WRN("Device is not initialized yet");
-        return -EBUSY;
+    int err = k_mutex_lock(&m_avail_pwms[p_cfg->pwm_index].mutex, K_FOREVER);
+    if (0 != err) {
+        return err;
     }
 
-    // TODO: Can this be called on individual channels?
-
-    return 0;
-}
-
-static int m_nordic_servo_stop(const struct device *dev)
-{
-    const struct nordic_servo_data *p_data = dev->data;
-
-    if (unlikely(!p_data->ready)) {
-        LOG_WRN("Device is not initialized yet");
-        return -EBUSY;
+    err = m_channel_get(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg->pwm_channel, value);
+    if (0 != err) {
+    	k_mutex_unlock(&m_avail_pwms[p_cfg->pwm_index].mutex);
+    	return err;
     }
 
-    // TODO: Can this be called on individual channels?
+    err = k_mutex_unlock(&m_avail_pwms[p_cfg->pwm_index].mutex);
+    if (0 != err) {
+        return err;
+    }
 
     return 0;
 }
@@ -284,8 +276,6 @@ static const struct servo_driver_api m_nordic_servo_driver_api = {
     .init  = m_nordic_servo_init,
     .write = m_nordic_servo_write,
     .read  = m_nordic_servo_read,
-    .start = m_nordic_servo_start,
-    .stop  = m_nordic_servo_stop
 };
 
 #define INST(num) DT_INST(num, nordic_servo)

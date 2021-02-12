@@ -11,7 +11,7 @@
             compatible = "nordic,servo";
             label = "SERVO_1";
             pin = <30>;
-            init_value = <20>;
+            init_value = <0>;
             status = "okay";
         };
         servo2: nordic-servo2 {
@@ -25,7 +25,7 @@
             compatible = "nordic,servo";
             label = "SERVO_3";
             pin = <28>;
-            init_value = <80>;
+            init_value = <100>;
             status = "okay";
         };
         servo4: nordic-servo4 {

@@ -10,9 +10,12 @@
 #include <device.h>
 #include <stdio.h>
 #include <sys/__assert.h>
+#include <drivers/servo.h>
 
 #include <logging/log.h>
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
+
+K_TIMER_DEFINE(sync_timer, NULL, NULL);
 
 void main(void)
 {
@@ -42,8 +45,38 @@ void main(void)
     }
     LOG_INF("dev is %p, name is %s", dev, dev->name);
 
+    int step=4;
+    k_timer_start(&sync_timer, K_MSEC(0), K_MSEC(500));
     while (1) {
-    	k_sleep(K_MSEC(100));
+    	int value;
+
+    	step = ((step + 1) % 6);
+    	switch(step) {
+    	case 0:
+    		value = 0;
+    		break;
+    	case 1:
+    		value = 25;
+    		break;
+    	case 2:
+    		value = 50;
+    		break;
+    	case 3:
+    		value = 75;
+    		break;
+    	case 4:
+    		value = 100;
+    		break;
+    	default:
+    		value = 50;
+    		break;
+    	}
+
+    	ret = servo_write(dev, value);
+    	if (ret) {
+    		LOG_INF("servo_write failed: %d", ret);
+    	}
+    	k_timer_status_sync(&sync_timer);
     }
     LOG_INF("exiting");
 }
