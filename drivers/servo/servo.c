@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LicenseRef-BSD-5-Clause-Nordic
  */
 
-#define DT_DRV_COMPAT nordic_servo
+#define DT_DRV_COMPAT nordic_nrf_sw_servo
 
 #include <kernel.h>
 #include <device.h>
@@ -15,7 +15,7 @@
 #include <nrfx_pwm.h>
 #include <logging/log.h>
 
-LOG_MODULE_REGISTER(nordic_servo, CONFIG_NORDIC_SERVO_LOG_LEVEL);
+LOG_MODULE_REGISTER(nordic_nrf_sw_servo, CONFIG_NRF_SW_SERVO_LOG_LEVEL);
 
 /* If this flag is not set in the sequence values that are passed to
    nrf_drv_pwm then the polarity of the PWM waveform will be inverted. */
@@ -38,11 +38,11 @@ typedef struct
     bool ready;
 } servo_group_t;
 
-struct nordic_servo_data {
+struct servo_data {
 	bool ready;
 };
 
-struct nordic_servo_cfg {
+struct servo_cfg {
     uint32_t pin;
     uint8_t  pwm_index;
     uint8_t  pwm_channel;
@@ -52,25 +52,25 @@ struct nordic_servo_cfg {
 };
 
 static servo_group_t m_avail_pwms[] = {
-#if CONFIG_NORDIC_SERVO_ALLOW_PWM0
+#if CONFIG_NRF_SW_SERVO_ALLOW_PWM0
 	{
 		.pwm_instance = NRFX_PWM_INSTANCE(0),
         .ready        = false,
     },
 #endif
-#if CONFIG_NORDIC_SERVO_ALLOW_PWM1
+#if CONFIG_NRF_SW_SERVO_ALLOW_PWM1
 	{
 		.pwm_instance = NRFX_PWM_INSTANCE(1),
         .ready        = false,
     },
 #endif
-#if CONFIG_NORDIC_SERVO_ALLOW_PWM2
+#if CONFIG_NRF_SW_SERVO_ALLOW_PWM2
 	{
 		.pwm_instance = NRFX_PWM_INSTANCE(2),
         .ready        = false,
     },
 #endif
-#if CONFIG_NORDIC_SERVO_ALLOW_PWM3
+#if CONFIG_NRF_SW_SERVO_ALLOW_PWM3
 	{
 		.pwm_instance = NRFX_PWM_INSTANCE(3),
         .ready        = false,
@@ -80,8 +80,8 @@ static servo_group_t m_avail_pwms[] = {
 
 #define NUM_AVAIL_PWMS (sizeof(m_avail_pwms)/sizeof(servo_group_t))
 
-static int m_channel_get(nrf_pwm_values_individual_t *p_values,
-	                     const struct nordic_servo_cfg *p_cfg,
+static int channel_get(nrf_pwm_values_individual_t *p_values,
+	                     const struct servo_cfg *p_cfg,
 	                     uint8_t *p_value)
 {
 	uint16_t *p_channel;
@@ -106,13 +106,13 @@ static int m_channel_get(nrf_pwm_values_individual_t *p_values,
     return 0;
 }
 
-static int m_channel_set(nrf_pwm_values_individual_t *p_values,
-	                     const struct nordic_servo_cfg *p_cfg,
+static int channel_set(nrf_pwm_values_individual_t *p_values,
+	                     const struct servo_cfg *p_cfg,
 	                     uint8_t value)
 {
 	uint16_t *p_channel;
 
-	if (100 < value)
+	if (SERVO_MAX_VALUE < value)
 	{
 		return -EINVAL;
 	}
@@ -137,13 +137,13 @@ static int m_channel_set(nrf_pwm_values_individual_t *p_values,
     return 0;
 }
 
-static int m_nordic_servo_init(const struct device *dev)
+static int nrf_sw_servo_init(const struct device *dev)
 {
     int err;
     nrfx_pwm_t *p_inst;
 
-    const struct nordic_servo_cfg *p_cfg  = dev->config;
-    struct nordic_servo_data      *p_data = dev->data;
+    const struct servo_cfg *p_cfg  = dev->config;
+    struct servo_data      *p_data = dev->data;
 
     if (unlikely(p_data->ready)) {
         /* Already initialized */
@@ -195,7 +195,7 @@ static int m_nordic_servo_init(const struct device *dev)
     	m_avail_pwms[p_cfg->pwm_index].ready = true;
     }
 
-    err = m_channel_set(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg, p_cfg->init_value);
+    err = channel_set(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg, p_cfg->init_value);
     if (0 != err) {
     	goto ERR_EXIT;
     }
@@ -211,17 +211,17 @@ ERR_EXIT:
     return -ENXIO;
 }
 
-static int m_nordic_servo_write(const struct device *dev, uint8_t value)
+static int nrf_sw_servo_write(const struct device *dev, uint8_t value)
 {
-	const struct nordic_servo_cfg *p_cfg  = dev->config;
-	struct nordic_servo_data      *p_data = dev->data;
+	const struct servo_cfg *p_cfg  = dev->config;
+	struct servo_data      *p_data = dev->data;
 
     if (unlikely(!p_data->ready)) {
         LOG_WRN("Device is not initialized yet");
         return -EBUSY;
     }
 
-    int err = m_channel_set(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg, value);
+    int err = channel_set(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg, value);
     if (0 != err) {
     	return err;
     }
@@ -229,17 +229,17 @@ static int m_nordic_servo_write(const struct device *dev, uint8_t value)
     return 0;
 }
 
-static int m_nordic_servo_read(const struct device *dev, uint8_t *value)
+static int nrf_sw_servo_read(const struct device *dev, uint8_t *value)
 {
-	const struct nordic_servo_cfg *p_cfg  = dev->config;
-	struct nordic_servo_data      *p_data = dev->data;
+	const struct servo_cfg *p_cfg  = dev->config;
+	struct servo_data      *p_data = dev->data;
 
     if (unlikely(!p_data->ready)) {
         LOG_WRN("Device is not initialized yet");
         return -EBUSY;
     }
 
-    int err = m_channel_get(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg, value);
+    int err = channel_get(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg, value);
     if (0 != err) {
     	return err;
     }
@@ -247,16 +247,16 @@ static int m_nordic_servo_read(const struct device *dev, uint8_t *value)
     return 0;
 }
 
-static const struct servo_driver_api m_nordic_servo_driver_api = {
-    .init  = m_nordic_servo_init,
-    .write = m_nordic_servo_write,
-    .read  = m_nordic_servo_read,
+static const struct servo_driver_api servo_driver_api = {
+    .init  = nrf_sw_servo_init,
+    .write = nrf_sw_servo_write,
+    .read  = nrf_sw_servo_read,
 };
 
-#define INST(num) DT_INST(num, nordic_servo)
+#define INST(num) DT_INST(num, nordic_nrf_sw_servo)
 
-#define NORDIC_SERVO_DEVICE(n) \
-    static const struct nordic_servo_cfg nordic_servo_cfg_##n = { \
+#define SERVO_DEVICE(n) \
+    static const struct servo_cfg servo_cfg_##n = { \
         .pin          = DT_PROP(INST(n), pin), \
         .init_value   = DT_PROP(INST(n), init_value), \
         .min_pulse_us = DT_PROP(INST(n), min_pulse_us), \
@@ -264,18 +264,18 @@ static const struct servo_driver_api m_nordic_servo_driver_api = {
         .pwm_channel  = (n % NRF_PWM_CHANNEL_COUNT), \
         .pwm_index    = (n / NRF_PWM_CHANNEL_COUNT) \
     }; \
-    static struct nordic_servo_data nordic_servo_data_##n; \
-    DEVICE_AND_API_INIT(nordic_servo_##n, \
+    static struct servo_data servo_data_##n; \
+    DEVICE_AND_API_INIT(nrf_sw_servo_##n, \
                 DT_LABEL(INST(n)), \
-                m_nordic_servo_init, \
-                &nordic_servo_data_##n, \
-                &nordic_servo_cfg_##n, \
+                nrf_sw_servo_init, \
+                &servo_data_##n, \
+                &servo_cfg_##n, \
                 POST_KERNEL, \
-                CONFIG_NORDIC_SERVO_INIT_PRIORITY, \
-                &m_nordic_servo_driver_api);
+                CONFIG_NRF_SW_SERVO_INIT_PRIORITY, \
+                &servo_driver_api);
 
-DT_INST_FOREACH_STATUS_OKAY(NORDIC_SERVO_DEVICE)
+DT_INST_FOREACH_STATUS_OKAY(SERVO_DEVICE)
 
 #if DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0
-#warning "Nordic servo driver enabled without any devices"
+#warning "Nordic nRF-SW-Servo driver enabled without any devices"
 #endif

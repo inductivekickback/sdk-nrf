@@ -1,7 +1,7 @@
 / {
     servos {
-        servo0: nordic-servo0 {
-            compatible = "nordic,servo";
+        servo0: nrf-servo0 {
+            compatible = "nordic,nrf-sw-servo";
             label = "SERVO_0";
             pin = <31>;
             init_value = <0>;
@@ -9,8 +9,8 @@
             max_pulse_us = <2400>;
             status = "okay";
         };
-		servo1: nordic-servo1 {
-            compatible = "nordic,servo";
+		servo1: nrf-servo1 {
+            compatible = "nordic,nrf-sw-servo";
             label = "SERVO_1";
             pin = <30>;
             init_value = <0>;
@@ -18,8 +18,8 @@
             max_pulse_us = <2250>;
             status = "okay";
         };
-        servo2: nordic-servo2 {
-            compatible = "nordic,servo";
+        servo2: nrf-servo2 {
+            compatible = "nordic,nrf-sw-servo";
             label = "SERVO_2";
             pin = <29>;
             init_value = <50>;
@@ -27,8 +27,8 @@
             max_pulse_us = <2000>;
             status = "okay";
         };
-        servo3: nordic-servo3 {
-            compatible = "nordic,servo";
+        servo3: nrf-servo3 {
+            compatible = "nordic,nrf-sw-servo";
             label = "SERVO_3";
             pin = <28>;
             init_value = <100>;
@@ -36,8 +36,8 @@
             max_pulse_us = <2500>;
             status = "okay";
         };
-        servo4: nordic-servo4 {
-            compatible = "nordic,servo";
+        servo4: nrf-servo4 {
+            compatible = "nordic,nrf-sw-servo";
             label = "SERVO_4";
             pin = <27>;
             init_value = <100>;

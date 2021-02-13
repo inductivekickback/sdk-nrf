@@ -52,9 +52,6 @@ void main(void)
 
     	step = ((step + 1) % 8);
     	switch(step) {
-    	case 0:
-    		value = 0;
-    		break;
     	case 1:
     		value = 25;
     		break;
@@ -77,6 +74,7 @@ void main(void)
             value = 25;
             break;
         default:
+            value = 0;
             break;
     	}
 
