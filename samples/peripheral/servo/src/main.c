@@ -50,7 +50,7 @@ void main(void)
     while (1) {
     	int value;
 
-    	step = ((step + 1) % 6);
+    	step = ((step + 1) % 8);
     	switch(step) {
     	case 0:
     		value = 0;
@@ -67,9 +67,17 @@ void main(void)
     	case 4:
     		value = 100;
     		break;
-    	default:
-    		value = 50;
-    		break;
+        case 5:
+            value = 75;
+            break;
+        case 6:
+            value = 50;
+            break;
+        case 7:
+            value = 25;
+            break;
+        default:
+            break;
     	}
 
     	ret = servo_write(dev, value);

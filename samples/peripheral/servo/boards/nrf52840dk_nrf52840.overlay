@@ -5,6 +5,8 @@
             label = "SERVO_0";
             pin = <31>;
             init_value = <0>;
+            min_pulse_us = <700>;
+            max_pulse_us = <2400>;
             status = "okay";
         };
 		servo1: nordic-servo1 {
@@ -12,6 +14,8 @@
             label = "SERVO_1";
             pin = <30>;
             init_value = <0>;
+            min_pulse_us = <750>;
+            max_pulse_us = <2250>;
             status = "okay";
         };
         servo2: nordic-servo2 {
@@ -19,6 +23,8 @@
             label = "SERVO_2";
             pin = <29>;
             init_value = <50>;
+            min_pulse_us = <1000>;
+            max_pulse_us = <2000>;
             status = "okay";
         };
         servo3: nordic-servo3 {
@@ -26,6 +32,8 @@
             label = "SERVO_3";
             pin = <28>;
             init_value = <100>;
+            min_pulse_us = <500>;
+            max_pulse_us = <2500>;
             status = "okay";
         };
         servo4: nordic-servo4 {
@@ -33,6 +41,8 @@
             label = "SERVO_4";
             pin = <27>;
             init_value = <100>;
+            min_pulse_us = <500>;
+            max_pulse_us = <2500>;
             status = "okay";
         };
     };

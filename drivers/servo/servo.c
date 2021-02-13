@@ -21,14 +21,13 @@ LOG_MODULE_REGISTER(nordic_servo, CONFIG_NORDIC_SERVO_LOG_LEVEL);
    nrf_drv_pwm then the polarity of the PWM waveform will be inverted. */
 #define POLARITY_BIT  (0x8000UL)
 
-#define MIN_VALUE     (600UL)
-#define MAX_VALUE     (2500UL)
-#define NEUTRAL_VALUE (((MAX_VALUE - MIN_VALUE) / 2) + MIN_VALUE)
-
 // Simple functions for mapping a value betwen [0, 100] to the
 // range [MIN_VALUE, MAX_VALUE] and vice versa.
-#define MAP(x) ((x) * (MAX_VALUE - MIN_VALUE)/100 + MIN_VALUE)
-#define PAM(x) (((x) - MIN_VALUE) * 100 / (MAX_VALUE - MIN_VALUE))
+//#define MAP(x) ((x) * (MAX_VALUE - MIN_VALUE)/100 + MIN_VALUE)
+//#define PAM(x) (((x) - MIN_VALUE) * 100 / (MAX_VALUE - MIN_VALUE))
+
+#define MAP(value, min, max) ((value) * ((max) - (min))/100 + (min))
+#define PAM(value, min, max) (((value) - (min)) * 100 / ((max) - (min)))
 
 // Structs of this type need to kept in the global portion (static) of RAM
 // (not const) because they are accessed by EasyDMA.
@@ -36,7 +35,6 @@ typedef struct
 {
     nrfx_pwm_t pwm_instance;
     nrf_pwm_values_individual_t pwm_values;
-    struct k_mutex mutex;
     bool ready;
 } servo_group_t;
 
@@ -49,6 +47,8 @@ struct nordic_servo_cfg {
     uint8_t  pwm_index;
     uint8_t  pwm_channel;
     uint8_t  init_value;
+    uint16_t min_pulse_us;
+    uint16_t max_pulse_us;
 };
 
 static servo_group_t m_avail_pwms[] = {
@@ -80,11 +80,13 @@ static servo_group_t m_avail_pwms[] = {
 
 #define NUM_AVAIL_PWMS (sizeof(m_avail_pwms)/sizeof(servo_group_t))
 
-static int m_channel_get(nrf_pwm_values_individual_t *p_values, uint8_t channel, uint8_t *p_value)
+static int m_channel_get(nrf_pwm_values_individual_t *p_values,
+	                     const struct nordic_servo_cfg *p_cfg,
+	                     uint8_t *p_value)
 {
 	uint16_t *p_channel;
 
-    switch (channel) {
+    switch (p_cfg->pwm_channel) {
     case 0:
     	p_channel = &p_values->channel_0;
     	break;
@@ -100,20 +102,22 @@ static int m_channel_get(nrf_pwm_values_individual_t *p_values, uint8_t channel,
     default:
     	return -EINVAL;
     }
-    *p_value = (uint8_t)PAM(*p_channel & ~POLARITY_BIT);
+    *p_value = (uint8_t)PAM(*p_channel & ~POLARITY_BIT, p_cfg->min_pulse_us, p_cfg->max_pulse_us);
     return 0;
 }
 
-static int m_channel_set(nrf_pwm_values_individual_t *p_values, uint8_t channel, uint8_t value)
+static int m_channel_set(nrf_pwm_values_individual_t *p_values,
+	                     const struct nordic_servo_cfg *p_cfg,
+	                     uint8_t value)
 {
 	uint16_t *p_channel;
 
-	if (MAX_VALUE < value)
+	if (100 < value)
 	{
 		return -EINVAL;
 	}
 
-    switch (channel) {
+    switch (p_cfg->pwm_channel) {
     case 0:
     	p_channel = &p_values->channel_0;
     	break;
@@ -129,7 +133,7 @@ static int m_channel_set(nrf_pwm_values_individual_t *p_values, uint8_t channel,
     default:
     	return -EINVAL;
     }
-    *p_channel = (MAP(value)|POLARITY_BIT);
+    *p_channel = (MAP(value, p_cfg->min_pulse_us, p_cfg->max_pulse_us)|POLARITY_BIT);
     return 0;
 }
 
@@ -188,17 +192,10 @@ static int m_nordic_servo_init(const struct device *dev)
     		goto ERR_EXIT;
     	}
 
-	    err = k_mutex_init(&m_avail_pwms[p_cfg->pwm_index].mutex);
-	    if (0 != err) {
-	        return err;
-	    }
-
     	m_avail_pwms[p_cfg->pwm_index].ready = true;
     }
 
-    err = m_channel_set(&m_avail_pwms[p_cfg->pwm_index].pwm_values,
-                         p_cfg->pwm_channel,
-                         p_cfg->init_value);
+    err = m_channel_set(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg, p_cfg->init_value);
     if (0 != err) {
     	goto ERR_EXIT;
     }
@@ -224,20 +221,9 @@ static int m_nordic_servo_write(const struct device *dev, uint8_t value)
         return -EBUSY;
     }
 
-    int err = k_mutex_lock(&m_avail_pwms[p_cfg->pwm_index].mutex, K_FOREVER);
+    int err = m_channel_set(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg, value);
     if (0 != err) {
-        return err;
-    }
-
-    err = m_channel_set(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg->pwm_channel, value);
-    if (0 != err) {
-    	k_mutex_unlock(&m_avail_pwms[p_cfg->pwm_index].mutex);
     	return err;
-    }
-
-    err = k_mutex_unlock(&m_avail_pwms[p_cfg->pwm_index].mutex);
-    if (0 != err) {
-        return err;
     }
 
     return 0;
@@ -253,20 +239,9 @@ static int m_nordic_servo_read(const struct device *dev, uint8_t *value)
         return -EBUSY;
     }
 
-    int err = k_mutex_lock(&m_avail_pwms[p_cfg->pwm_index].mutex, K_FOREVER);
+    int err = m_channel_get(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg, value);
     if (0 != err) {
-        return err;
-    }
-
-    err = m_channel_get(&m_avail_pwms[p_cfg->pwm_index].pwm_values, p_cfg->pwm_channel, value);
-    if (0 != err) {
-    	k_mutex_unlock(&m_avail_pwms[p_cfg->pwm_index].mutex);
     	return err;
-    }
-
-    err = k_mutex_unlock(&m_avail_pwms[p_cfg->pwm_index].mutex);
-    if (0 != err) {
-        return err;
     }
 
     return 0;
@@ -282,10 +257,12 @@ static const struct servo_driver_api m_nordic_servo_driver_api = {
 
 #define NORDIC_SERVO_DEVICE(n) \
     static const struct nordic_servo_cfg nordic_servo_cfg_##n = { \
-        .pin         = DT_PROP(INST(n), pin), \
-        .init_value  = DT_PROP(INST(n), init_value), \
-        .pwm_channel = (n % NRF_PWM_CHANNEL_COUNT), \
-        .pwm_index   = (n / NRF_PWM_CHANNEL_COUNT) \
+        .pin          = DT_PROP(INST(n), pin), \
+        .init_value   = DT_PROP(INST(n), init_value), \
+        .min_pulse_us = DT_PROP(INST(n), min_pulse_us), \
+        .max_pulse_us = DT_PROP(INST(n), max_pulse_us), \
+        .pwm_channel  = (n % NRF_PWM_CHANNEL_COUNT), \
+        .pwm_index    = (n / NRF_PWM_CHANNEL_COUNT) \
     }; \
     static struct nordic_servo_data nordic_servo_data_##n; \
     DEVICE_AND_API_INIT(nordic_servo_##n, \
