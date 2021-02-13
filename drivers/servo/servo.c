@@ -22,10 +22,7 @@ LOG_MODULE_REGISTER(nordic_nrf_sw_servo, CONFIG_NRF_SW_SERVO_LOG_LEVEL);
 #define POLARITY_BIT  (0x8000UL)
 
 // Simple functions for mapping a value betwen [0, 100] to the
-// range [MIN_VALUE, MAX_VALUE] and vice versa.
-//#define MAP(x) ((x) * (MAX_VALUE - MIN_VALUE)/100 + MIN_VALUE)
-//#define PAM(x) (((x) - MIN_VALUE) * 100 / (MAX_VALUE - MIN_VALUE))
-
+// range [min, max] and vice versa.
 #define MAP(value, min, max) ((value) * ((max) - (min))/100 + (min))
 #define PAM(value, min, max) (((value) - (min)) * 100 / ((max) - (min)))
 
