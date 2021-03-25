@@ -18,7 +18,7 @@ properties:
     type: string
     description: Human readable string describing the device's status
 
-  sensor-out-gpios:
+  gpios:
     type: phandle-array
-    description: Sensor out pin
+    description: Sensor OUT pin (input)
     required: true
