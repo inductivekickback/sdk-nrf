@@ -13,6 +13,8 @@ rsource "net/Kconfig"
 rsource "sensor/Kconfig"
 rsource "gps/Kconfig"
 rsource "serial/Kconfig"
+rsource "rad_rx/Kconfig"
+rsource "rad_tx/Kconfig"
 
 if BT_LL_SOFTDEVICE
 rsource "bt_ll_softdevice/Kconfig"
