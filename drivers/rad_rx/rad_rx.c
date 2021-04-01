@@ -34,7 +34,6 @@ typedef enum
 {
     MSG_STATE_WAIT_FOR_LINE_CLEAR,
     MSG_STATE_WAIT_FOR_PREAMBLE,
-    MSG_STATE_PREAMBLE_RECEIVED,
     MSG_STATE_WAIT_FOR_1,
     MSG_STATE_WAIT_FOR_0,
     MSG_STATE_COMPLETE,
@@ -61,21 +60,41 @@ struct rad_rx_cfg {
     const uint32_t     flags;
 };
 
+static void line_clear_timer_expire(struct k_timer *timer_id)
+{
+    // TODO: Ensure that this interrupt has a higher priority than the GPIO interrupt
+    //       to preclude a race condition.
+    struct rad_rx_data *data = CONTAINER_OF(timer_id, struct rad_rx_data, timer);
+
+    data->state = MSG_STATE_WAIT_FOR_PREAMBLE;
+    data->index = 0;
+}
+
 static void message_decode(struct k_work *item)
 {
-    // TODO: Interrupt auto increments index so it could be above MAX.
-    // TODO: If the message buffer is full then this work won't be queued again.
-    // TODO: This might be one more pin change after WAIT_FOR_LINE_CLEAR
-    struct rad_rx_data *data = CONTAINER_OF(item, struct rad_rx_data, work);
+    struct rad_rx_data *data  = CONTAINER_OF(item, struct rad_rx_data, work);
+    uint32_t            index = atomic_get(&data->index);
 
-    // Needs to be re-entrant.
-    // Needs to assume that index can change at any time.
-    uint32_t index = atomic_get(&data->index);
+    if (MSG_STATE_WAIT_FOR_LINE_CLEAR == data->state) {
+        /* There might be one additional input change after giving up on the message. */
+        return;
+    }
 
-    // What's the worst case here?
-    //   If the message has an error but isn't MAX length then the interrupt adds an entry
-    //       But it's waiting for line clear now or soon anyway
-    //       If the index hasn't been reset then the new initial timestamp is discarded
+    // TODO: If the message is complete then execute callback and WAIT_FOR_LINE_CLEAR.
+    //          Start by checking a library's minimum and maximum message lengths.
+    //          Then check to see if it parses.
+    //          If not, move on to the next enabled one.
+    //       What if a library says for sure that it's not going to parse?
+    //          Maybe use flags to avoid asking over and over again.
+    //       Still need a unified way to represent each message.
+
+    // TODO: If the message is incomplete then return.
+
+    // TODO: If the message can't be parsed by any libraries then set WAIT_FOR_LINE_CLEAR
+    //       and start the timer.
+
+    data->state = MSG_STATE_WAIT_FOR_LINE_CLEAR;
+    k_timer_start(&data->timer, K_MSEC(LINE_CLEAR_MS), K_NO_WAIT);
 }
 
 static void input_changed(const struct device *dev, struct gpio_callback *cb_data, uint32_t pins)
