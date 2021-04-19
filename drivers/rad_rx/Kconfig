@@ -15,6 +15,7 @@ if RAD_RX
 
 config RAD_RX_ACCEPT_DYNASTY
 	bool "Accept messages from Dynasty Toys blasters (probably also Kidzlane, JOYMOR, etc.)"
+	select RAD_MESSAGE_TYPE_RAD
 	default y
 	help
 		Accept messages from Dynasty Toys blasters, a generic and now defunct brand
