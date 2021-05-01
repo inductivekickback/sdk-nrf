@@ -114,6 +114,9 @@ static void message_decode(struct k_work *item)
     // TODO: If the message can't be parsed by any libraries then set WAIT_FOR_LINE_CLEAR
     //       and start the timer.
 
+    // TODO: Verify the start pulse before moving from PARSE_STATE_WAIT_FOR_START_PULSE to
+    //       PARSE_STATE_INCOMPLETE for each enabled lib.
+
     data->state = MSG_STATE_WAIT_FOR_LINE_CLEAR;
     k_timer_start(&data->timer, K_MSEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
 }
@@ -127,11 +130,22 @@ static void input_changed(const struct device *dev, struct gpio_callback *cb_dat
         return;
     }
 
-    uint32_t index = atomic_inc(&data->index);
-    if (RAD_MSG_MAX_LEN > index) {
-        data->message[index] = k_cycle_get_32();
+    uint32_t now   = k_cycle_get_32();
+    uint32_t index = atomic_inc(&data->index); /* index is set to the pre-incremented valued */
+
+    if (0 < index) {
+        if (RAD_MSG_MAX_LEN <= index) {
+            return;
+        }
+        if (data->timestamp <= now) {
+            data->message[index-1] = (now - data->timestamp);
+        } else {
+            data->message[index-1] = (0xFFFFFFFF - data->timestamp);
+            data->message[index-1] += now;
+        }
         k_work_submit(&data->work);
     }
+    data->timestamp = now;
 }
 
 static int dmv_rad_rx_init(const struct device *dev)
