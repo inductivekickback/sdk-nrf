@@ -29,6 +29,8 @@ rsource "supl/Kconfig"
 rsource "date_time/Kconfig"
 rsource "ram_pwrdn/Kconfig"
 rsource "edge_impulse/Kconfig"
-rsource "rad_message_type_rad/Kconfig"
+rsource "rad_msg_type_rad/Kconfig"
+rsource "rad_msg_type_laser_x/Kconfig"
+rsource "rad_msg_type_dynasty/Kconfig"
 
 endmenu

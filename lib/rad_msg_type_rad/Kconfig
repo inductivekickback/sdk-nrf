@@ -4,13 +4,13 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-menuconfig RAD_MESSAGE_TYPE_RAD
+menuconfig RAD_MSG_TYPE_RAD
 	bool "Rad implementation for working with Rad messages"
 
-if RAD_MESSAGE_TYPE_RAD
+if RAD_MSG_TYPE_RAD
 
-module = RAD_MESSAGE_TYPE_RAD
-module-str = RAD_MESSAGE_TYPE_RAD
+module = RAD_MSG_TYPE_RAD
+module-str = RAD_MSG_TYPE_RAD
 source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
 
-endif # RAD_MESSAGE_TYPE_RAD
+endif # RAD_MSG_TYPE_RAD

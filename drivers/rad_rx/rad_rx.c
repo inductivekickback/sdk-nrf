@@ -81,13 +81,13 @@ static void line_clear_timer_expire(struct k_timer *timer_id)
     data->state               = MSG_STATE_WAIT_FOR_PREAMBLE;
     data->index               = 0;
 #if CONFIG_RAD_RX_ACCEPT_RAD
-    data->rad_parse_state     = PARSE_STATE_INCOMPLETE;
+    data->rad_parse_state     = PARSE_STATE_WAIT_FOR_START_PULSE;
 #endif
 #if CONFIG_RAD_RX_ACCEPT_DYNASTY
-    data->dynasty_parse_state = PARSE_STATE_INCOMPLETE;
+    data->dynasty_parse_state = PARSE_STATE_WAIT_FOR_START_PULSE;
 #endif
 #if CONFIG_RAD_RX_ACCEPT_LASER_X
-    data->laser_x_parse_state = PARSE_STATE_INCOMPLETE;
+    data->laser_x_parse_state = PARSE_STATE_WAIT_FOR_START_PULSE;
 #endif
 }
 
@@ -115,7 +115,7 @@ static void message_decode(struct k_work *item)
     //       and start the timer.
 
     data->state = MSG_STATE_WAIT_FOR_LINE_CLEAR;
-    k_timer_start(&data->timer, K_MSEC(RAD_MSG_LINE_CLEAR_LEN_MS), K_NO_WAIT);
+    k_timer_start(&data->timer, K_MSEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
 }
 
 static void input_changed(const struct device *dev, struct gpio_callback *cb_data, uint32_t pins)
@@ -123,7 +123,7 @@ static void input_changed(const struct device *dev, struct gpio_callback *cb_dat
     struct rad_rx_data *data = CONTAINER_OF(cb_data, struct rad_rx_data, cb_data);
 
     if (MSG_STATE_WAIT_FOR_LINE_CLEAR == data->state) {
-        k_timer_start(&data->timer, K_MSEC(RAD_MSG_LINE_CLEAR_LEN_MS), K_NO_WAIT);
+        k_timer_start(&data->timer, K_MSEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
         return;
     }
 

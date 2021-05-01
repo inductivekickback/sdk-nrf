@@ -22,9 +22,10 @@ extern "C" {
 
 typedef enum
 {
-    PARSE_STATE_INCOMPLETE, /* Not enough of the message has been received. */
-    PARSE_STATE_INVALID,    /* The message is not going to work out. */
-    PARSE_STATE_VALID,      /* The message is valid. */
+    PARSE_STATE_WAIT_FOR_START_PULSE, /* A valid start pulse is required before parsing. */
+    PARSE_STATE_INCOMPLETE,           /* Not enough of the message has been received. */
+    PARSE_STATE_INVALID,              /* The message is not going to work out. */
+    PARSE_STATE_VALID,                /* The message is valid. */
     PARSE_STATE_COUNT
 } parse_state_t;
 

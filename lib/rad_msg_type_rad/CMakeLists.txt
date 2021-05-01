@@ -5,4 +5,4 @@
 #
 
 zephyr_library()
-zephyr_library_sources(rad_message_type_rad.c)
+zephyr_library_sources(rad_msg_type_rad.c)

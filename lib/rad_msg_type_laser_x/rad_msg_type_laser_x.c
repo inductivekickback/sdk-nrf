@@ -9,17 +9,17 @@
 
 #include <rad.h>
 
-LOG_MODULE_REGISTER(rad_message_type_rad, CONFIG_RAD_MESSAGE_TYPE_RAD_LOG_LEVEL);
+LOG_MODULE_REGISTER(rad_message_type_laser_x, CONFIG_RAD_MSG_TYPE_LASER_X_LOG_LEVEL);
 
 
-parse_state_t rad_message_type_rad_parse(uint32_t *message, uint32_t len)
+parse_state_t rad_message_type_laser_x_parse(uint32_t *message, uint32_t len)
 {
     /**
      * NOTE: The start pulse length is validated before this function is called so
      *       parsing effectively starts at index 1.
      */
 
-    if (RAD_MSG_TYPE_RAD_MSG_LEN > len) {
+    if (RAD_MSG_TYPE_LASER_X_MSG_LEN > len) {
         return PARSE_STATE_INCOMPLETE;
     }
 
