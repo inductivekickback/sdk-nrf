@@ -28,6 +28,8 @@ typedef enum
     PARSE_STATE_COUNT
 } parse_state_t;
 
+#define RAD_MSG_START_PULSE_MARGIN_US 500 /* A valid start pulse can be +/- this much. */
+
 /**
  * A *_MSG_LEN is the number of elapsed-time measurements required to describe a message.
  *
@@ -40,13 +42,13 @@ typedef enum
 #define RAD_MSG_TYPE_RAD_MSG_START_PULSE_LEN_US     1580
 #define RAD_MSG_TYPE_RAD_MSG_LINE_CLEAR_LEN_US      860
 
-#define RAD_MSG_TYPE_DYNASTY_MSG_LEN	            41
+#define RAD_MSG_TYPE_DYNASTY_MSG_LEN                41
 #define RAD_MSG_TYPE_DYNASTY_MSG_START_PULSE_LEN_US 1660
-#define RAD_MSG_TYPE_DYNASTY_MSG_LINE_CLEAR_LEN_US 	830
+#define RAD_MSG_TYPE_DYNASTY_MSG_LINE_CLEAR_LEN_US  830
 
-#define RAD_MSG_TYPE_LASER_X_MSG_LEN  	            9
-#define RAD_MSG_TYPE_LASER_X_MSG_START_PULSE_LEN_US	5950
-#define RAD_MSG_TYPE_LASER_X_MSG_LINE_CLEAR_LEN_US 	500
+#define RAD_MSG_TYPE_LASER_X_MSG_LEN                9
+#define RAD_MSG_TYPE_LASER_X_MSG_START_PULSE_LEN_US 5950
+#define RAD_MSG_TYPE_LASER_X_MSG_LINE_CLEAR_LEN_US  500
 
 #define RAD_MSG_MAX_LEN                0
 #define RAD_MSG_LINE_CLEAR_LEN_US      0
