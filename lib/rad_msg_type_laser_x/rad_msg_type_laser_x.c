@@ -12,7 +12,7 @@
 LOG_MODULE_REGISTER(rad_message_type_laser_x, CONFIG_RAD_MSG_TYPE_LASER_X_LOG_LEVEL);
 
 
-parse_state_t rad_message_type_laser_x_parse(uint32_t *message, uint32_t len)
+rad_parse_state_t rad_message_type_laser_x_parse(uint32_t *message, uint32_t len)
 {
     /**
      * NOTE: The start pulse length is validated before this function is called so
@@ -20,10 +20,10 @@ parse_state_t rad_message_type_laser_x_parse(uint32_t *message, uint32_t len)
      */
 
     if (RAD_MSG_TYPE_LASER_X_MSG_LEN > len) {
-        return PARSE_STATE_INCOMPLETE;
+        return RAD_PARSE_STATE_INCOMPLETE;
     }
 
     // TODO: Actually verify it.
 
-    return PARSE_STATE_VALID;
+    return RAD_PARSE_STATE_VALID;
 }

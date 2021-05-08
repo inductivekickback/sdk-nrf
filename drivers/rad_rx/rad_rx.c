@@ -12,7 +12,7 @@
  *         - But need to reset message index and state from there.
  *       How to synchronize between pin-change interrupt and sys queue processing??????
  *         - If we wait until the line clears then that is added latency.
- *         - If we parse as soon as minimum length is achieved then we need to skip invalid messages
+ *         - If we parse as soon as length is achieved then we need to skip invalid messages.
  *         - Once a message is accepted/rejected by all libs then wait for clear.
  *         - Only try to parse on rising edge.
  */
@@ -31,6 +31,9 @@
 
 LOG_MODULE_REGISTER(rad_rx, CONFIG_RAD_RX_LOG_LEVEL);
 
+#define IS_VALID_START_PULSE(value, target) ((target)-RAD_MSG_START_PULSE_MARGIN_US >= (value) && \
+                                                (target)+RAD_MSG_START_PULSE_MARGIN_US <= (value))
+
 typedef enum
 {
     MSG_STATE_WAIT_FOR_LINE_CLEAR,
@@ -46,6 +49,8 @@ struct rad_rx_data {
 
     const struct device  *dev;
     struct gpio_callback  cb_data;
+
+    rad_rx_callback_t    *cb;
 
     struct k_timer        timer;
     struct k_work         work;
@@ -93,32 +98,49 @@ static void line_clear_timer_expire(struct k_timer *timer_id)
 
 static void message_decode(struct k_work *item)
 {
-    struct rad_rx_data *data  = CONTAINER_OF(item, struct rad_rx_data, work);
-    uint32_t            index = atomic_get(&data->index);
+    struct rad_rx_data *data         = CONTAINER_OF(item, struct rad_rx_data, work);
+    uint32_t            index        = atomic_get(&data->index);
+    bool                msg_finished = true;
 
     if (MSG_STATE_WAIT_FOR_LINE_CLEAR == data->state) {
         /* There might be one additional input change after giving up on the message. */
         return;
     }
 
-    // TODO: If the message is complete then execute callback and WAIT_FOR_LINE_CLEAR.
-    //          Start by checking a library's minimum and maximum message lengths.
-    //          Then check to see if it parses.
-    //          If not, move on to the next enabled one.
-    //       What if a library says for sure that it's not going to parse?
-    //          Maybe use flags to avoid asking over and over again.
-    //       Still need a unified way to represent each message.
+#if CONFIG_RAD_RX_ACCEPT_RAD
+    switch (data->rad_parse_state) {
+    case PARSE_STATE_WAIT_FOR_START_PULSE:
+        if (!IS_VALID_START_PULSE(data->message[0], RAD_MSG_TYPE_RAD_MSG_START_PULSE_LEN_US)) {
+            data->rad_parse_state = RAD_PARSE_STATE_INVALID;
+            break;
+        } else {
+            msg_finished          = false;
+            data->rad_parse_state = RAD_PARSE_STATE_INCOMPLETE;
+            // Fall-through into the next state in case the entire message is received.
+        }
+    case PARSE_STATE_INCOMPLETE:
+        if (RAD_MSG_TYPE_RAD_MSG_LEN > index) {
+            msg_finished = false;
+            break;
+        } else if (RAD_MSG_TYPE_RAD_MSG_LEN < index) {
+            data->rad_parse_state = RAD_PARSE_STATE_INVALID;
+            break;
+        }
 
-    // TODO: If the message is incomplete then return.
+        if (RAD_PARSE_STATE_VALID == rad_message_type_rad_parse()) {
+            // TODO: Execute callback: data->cb(RAD_MSG_TYPE_RAD, pointer to data);
+            data->rad_parse_state = RAD_PARSE_STATE_VALID;
+        }
+        break;
+    default:
+        break;
+    }
+#endif
 
-    // TODO: If the message can't be parsed by any libraries then set WAIT_FOR_LINE_CLEAR
-    //       and start the timer.
-
-    // TODO: Verify the start pulse before moving from PARSE_STATE_WAIT_FOR_START_PULSE to
-    //       PARSE_STATE_INCOMPLETE for each enabled lib.
-
-    data->state = MSG_STATE_WAIT_FOR_LINE_CLEAR;
-    k_timer_start(&data->timer, K_MSEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
+    if (msg_finished) {
+        data->state = MSG_STATE_WAIT_FOR_LINE_CLEAR;
+        k_timer_start(&data->timer, K_MSEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
+    }
 }
 
 static void input_changed(const struct device *dev, struct gpio_callback *cb_data, uint32_t pins)
@@ -143,7 +165,11 @@ static void input_changed(const struct device *dev, struct gpio_callback *cb_dat
             data->message[index-1] = (0xFFFFFFFF - data->timestamp);
             data->message[index-1] += now;
         }
-        k_work_submit(&data->work);
+
+        // Only attempt to decode on rising edges.
+        if (gpio_pin_get(dev, pins)) {
+            k_work_submit(&data->work);
+        }
     }
     data->timestamp = now;
 }
@@ -157,8 +183,17 @@ ERR_EXIT:
     return -ENXIO;
 }
 
+static int dmv_rad_set_callback(rad_rx_callback_t *cb)
+{
+    struct rad_rx_data *data = CONTAINER_OF(cb_data, struct rad_rx_data, cb_data);
+
+    data->cb = cb;
+    return 0;
+}
+
 static const struct rad_rx_driver_api rad_rx_driver_api = {
-    .init  = dmv_rad_rx_init,
+    .init         = dmv_rad_rx_init,
+    .set_callback = dmv_rad_set_callback,
 };
 
 #define INST(num) DT_INST(num, dmv_rad_rx)

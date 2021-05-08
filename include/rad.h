@@ -22,24 +22,33 @@ extern "C" {
 
 typedef enum
 {
-    PARSE_STATE_WAIT_FOR_START_PULSE, /* A valid start pulse is required before parsing. */
-    PARSE_STATE_INCOMPLETE,           /* Not enough of the message has been received. */
-    PARSE_STATE_INVALID,              /* The message is not going to work out. */
-    PARSE_STATE_VALID,                /* The message is valid. */
-    PARSE_STATE_COUNT
-} parse_state_t;
+    RAD_PARSE_STATE_WAIT_FOR_START_PULSE, /* A valid start pulse is required before parsing. */
+    RAD_PARSE_STATE_INCOMPLETE,           /* Not enough of the message has been received. */
+    RAD_PARSE_STATE_INVALID,              /* The message is not going to work out. */
+    RAD_PARSE_STATE_VALID,                /* The message is valid. */
+    RAD_PARSE_STATE_COUNT
+} rad_parse_state_t;
+
+typedef enum
+{
+	RAD_MSG_TYPE_RAD,
+	RAD_MSG_TYPE_DYNASTY,
+	RAD_MSG_TYPE_LASER_X,
+	RAD_MSG_TYPE_COUNT
+} rad_msg_type_t;
 
 #define RAD_MSG_START_PULSE_MARGIN_US 500 /* A valid start pulse can be +/- this much. */
 
 /**
- * A *_MSG_LEN is the number of elapsed-time measurements required to describe a message.
+ * A *_MSG_LEN is the number of elapsed-time measurements required to describe a message, including
+ * the start pulse.
  *
  * A *_MSG_START_PULSE_LEN_US is the expected length of the start pulse.
  *
  * A *_MSG_LINE_CLEAR_LEN_US is 110% of the expected amount of time that needs to elapse
  * after the final active pulse in order to decide that the message is finished.
  */
-#define RAD_MSG_TYPE_RAD_MSG_LEN                    17
+#define RAD_MSG_TYPE_RAD_MSG_LEN                    37
 #define RAD_MSG_TYPE_RAD_MSG_START_PULSE_LEN_US     1580
 #define RAD_MSG_TYPE_RAD_MSG_LINE_CLEAR_LEN_US      860
 
@@ -47,7 +56,7 @@ typedef enum
 #define RAD_MSG_TYPE_DYNASTY_MSG_START_PULSE_LEN_US 1660
 #define RAD_MSG_TYPE_DYNASTY_MSG_LINE_CLEAR_LEN_US  830
 
-#define RAD_MSG_TYPE_LASER_X_MSG_LEN                9
+#define RAD_MSG_TYPE_LASER_X_MSG_LEN                17
 #define RAD_MSG_TYPE_LASER_X_MSG_START_PULSE_LEN_US 5950
 #define RAD_MSG_TYPE_LASER_X_MSG_LINE_CLEAR_LEN_US  500
 
