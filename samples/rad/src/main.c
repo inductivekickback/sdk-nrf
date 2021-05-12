@@ -24,7 +24,7 @@ void main(void)
         k_sleep(K_MSEC(500));
     }
 
-    dev = device_get_binding("PEW_PEW_RX");
+    dev = device_get_binding("rad_rx0");
 
     if (dev == NULL) {
         LOG_ERR("Failed to get dev binding");

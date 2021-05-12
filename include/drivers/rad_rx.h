@@ -20,11 +20,13 @@ extern "C" {
 #include <device.h>
 #include <stdbool.h>
 
+#include <rad.h>
+
 /* This callback is called from the driver to notify the app that a message was received. */
-typedef void (*rad_rx_callback_t) (enum rad_msg_type_t msg_type, void *data);
+typedef void (*rad_rx_callback_t) (rad_msg_type_t msg_type, void *data);
 
 typedef int (*rad_rx_init_t)         (const struct device *dev);
-typedef int (*rad_rx_set_callback_t) (rad_rx_callback_t *cb);
+typedef int (*rad_rx_set_callback_t) (const struct device *dev, rad_rx_callback_t *cb);
 
 /**
  * @brief Rad receiver driver API
@@ -50,7 +52,7 @@ static inline int rad_rx_init(const struct device *dev)
 	return api->init(dev);
 }
 
-static inline int rad_rx_set_callback(rad_rx_callback_t *cb)
+static inline int rad_rx_set_callback(const struct device *dev, rad_rx_callback_t *cb)
 {
 	struct rad_rx_driver_api *api;
 
@@ -63,7 +65,7 @@ static inline int rad_rx_set_callback(rad_rx_callback_t *cb)
 	if (api->init == NULL) {
 		return -ENOTSUP;
 	}
-	return api->set_callback(cb);
+	return api->set_callback(dev, cb);
 }
 
 #ifdef __cplusplus
