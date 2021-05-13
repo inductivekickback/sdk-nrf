@@ -30,8 +30,8 @@
 
 LOG_MODULE_REGISTER(rad_rx, CONFIG_RAD_RX_LOG_LEVEL);
 
-#define IS_VALID_START_PULSE(value, target) ((target)-RAD_MSG_START_PULSE_MARGIN_US >= (value) && \
-                                                (target)+RAD_MSG_START_PULSE_MARGIN_US <= (value))
+#define IS_VALID_START_PULSE(value, target) ((target)-RAD_MSG_START_PULSE_MARGIN_US <= (value) && \
+                                                (target)+RAD_MSG_START_PULSE_MARGIN_US >= (value))
 
 typedef enum
 {
@@ -49,7 +49,7 @@ struct rad_rx_data {
     const struct device  *dev;
     struct gpio_callback  cb_data;
 
-    rad_rx_callback_t    *cb;
+    rad_rx_callback_t     cb;
 
     struct k_timer        timer;
     struct k_work         work;
@@ -82,8 +82,8 @@ static void line_clear_timer_expire(struct k_timer *timer_id)
     //       to preclude a race condition.
     struct rad_rx_data *p_data = CONTAINER_OF(timer_id, struct rad_rx_data, timer);
 
-    p_data->state               = MSG_STATE_WAIT_FOR_PREAMBLE;
-    p_data->index               = 0;
+    p_data->state = MSG_STATE_WAIT_FOR_PREAMBLE;
+    atomic_set(&p_data->index, 0);
 #if CONFIG_RAD_RX_ACCEPT_RAD
     p_data->rad_parse_state     = RAD_PARSE_STATE_WAIT_FOR_START_PULSE;
 #endif
@@ -97,8 +97,8 @@ static void line_clear_timer_expire(struct k_timer *timer_id)
 
 static void message_decode(struct k_work *item)
 {
-    struct rad_rx_data *p_data         = CONTAINER_OF(item, struct rad_rx_data, work);
-    uint32_t            index        = atomic_get(&p_data->index);
+    struct rad_rx_data *p_data       = CONTAINER_OF(item, struct rad_rx_data, work);
+    uint32_t            len          = (atomic_get(&p_data->index) - 1);
     bool                msg_finished = true;
 
     if (MSG_STATE_WAIT_FOR_LINE_CLEAR == p_data->state) {
@@ -107,28 +107,65 @@ static void message_decode(struct k_work *item)
     }
 
 #if CONFIG_RAD_RX_ACCEPT_RAD
+    rad_msg_rad_t rad_msg;
     switch (p_data->rad_parse_state) {
     case RAD_PARSE_STATE_WAIT_FOR_START_PULSE:
         if (!IS_VALID_START_PULSE(p_data->message[0], RAD_MSG_TYPE_RAD_MSG_START_PULSE_LEN_US)) {
             p_data->rad_parse_state = RAD_PARSE_STATE_INVALID;
             break;
         } else {
-            msg_finished          = false;
+            msg_finished            = false;
             p_data->rad_parse_state = RAD_PARSE_STATE_INCOMPLETE;
             // Fall-through into the next state in case the entire message is received.
         }
     case RAD_PARSE_STATE_INCOMPLETE:
-        if (RAD_MSG_TYPE_RAD_MSG_LEN > index) {
+        if (RAD_MSG_TYPE_RAD_MSG_LEN > len) {
             msg_finished = false;
             break;
-        } else if (RAD_MSG_TYPE_RAD_MSG_LEN < index) {
+        } else if (RAD_MSG_TYPE_RAD_MSG_LEN < len) {
             p_data->rad_parse_state = RAD_PARSE_STATE_INVALID;
             break;
         }
 
-        if (RAD_PARSE_STATE_VALID == rad_message_type_rad_parse()) {
-            // TODO: Execute callback: p_data->cb(RAD_MSG_TYPE_RAD, pointer to data);
+        if (RAD_PARSE_STATE_VALID==rad_message_type_rad_parse(&p_data->message[0],len,&rad_msg)) {
             p_data->rad_parse_state = RAD_PARSE_STATE_VALID;
+            if (p_data->cb) {
+                p_data->cb(RAD_MSG_TYPE_RAD, (void*)&rad_msg);
+            }
+        }
+        break;
+    default:
+        break;
+    }
+#endif
+
+#if CONFIG_RAD_RX_ACCEPT_LASER_X
+    rad_msg_laser_x_t laser_x_msg;
+    switch (p_data->laser_x_parse_state) {
+    case RAD_PARSE_STATE_WAIT_FOR_START_PULSE:
+        if (!IS_VALID_START_PULSE(p_data->message[0], RAD_MSG_TYPE_LASER_X_MSG_START_PULSE_LEN_US)){
+            p_data->laser_x_parse_state = RAD_PARSE_STATE_INVALID;
+            break;
+        } else {
+            msg_finished                = false;
+            p_data->laser_x_parse_state = RAD_PARSE_STATE_INCOMPLETE;
+            // Fall-through into the next state in case the entire message is received.
+        }
+    case RAD_PARSE_STATE_INCOMPLETE:
+        if (RAD_MSG_TYPE_LASER_X_MSG_LEN > len) {
+            msg_finished = false;
+            break;
+        } else if (RAD_MSG_TYPE_LASER_X_MSG_LEN < len) {
+            p_data->laser_x_parse_state = RAD_PARSE_STATE_INVALID;
+            break;
+        }
+
+        if (RAD_PARSE_STATE_VALID == 
+                    rad_message_type_laser_x_parse(&p_data->message[0], len, &laser_x_msg)) {
+            p_data->laser_x_parse_state = RAD_PARSE_STATE_VALID;
+            if (p_data->cb) {
+                p_data->cb(RAD_MSG_TYPE_LASER_X, (void*)&laser_x_msg);
+            }
         }
         break;
     default:
@@ -151,7 +188,7 @@ static void input_changed(const struct device *dev, struct gpio_callback *cb_dat
         return;
     }
 
-    uint32_t now   = k_cycle_get_32();
+    uint32_t now   = k_cyc_to_us_near32(k_cycle_get_32());
     uint32_t index = atomic_inc(&p_data->index); /* index is set to the pre-incremented valued */
 
     if (0 < index) {
@@ -165,8 +202,8 @@ static void input_changed(const struct device *dev, struct gpio_callback *cb_dat
             p_data->message[index-1] += now;
         }
 
-        // Only attempt to decode on rising edges.
-        if (gpio_pin_get(dev, pins)) {
+        // Only attempt to decode on deasserted edges.
+        if (!gpio_pin_get(dev, pins)) {
             k_work_submit(&p_data->work);
         }
     }
@@ -212,7 +249,7 @@ ERR_EXIT:
     return -ENXIO;
 }
 
-static int dmv_rad_set_callback(const struct device *dev, rad_rx_callback_t *cb)
+static int dmv_rad_set_callback(const struct device *dev, rad_rx_callback_t cb)
 {
     struct rad_rx_data *p_data = dev->data;
     p_data->cb = cb;

@@ -39,6 +39,27 @@ typedef enum
 
 #define RAD_MSG_START_PULSE_MARGIN_US 500 /* A valid start pulse can be +/- this much. */
 
+typedef struct
+{
+	uint8_t damage		: 4;
+	uint8_t special 	: 4;
+	uint8_t player_id	: 4;
+	uint8_t team_id		: 2;
+	uint8_t reserved	: 2;
+} rad_msg_rad_t;
+
+typedef struct
+{
+	uint8_t team_id;
+} rad_msg_laser_x_t;
+
+typedef struct
+{
+	uint8_t team_id;
+	uint8_t weapon_id;
+	uint8_t checksum;
+} rad_msg_dynasty_t;
+
 /**
  * A *_MSG_LEN is the number of elapsed-time measurements required to describe a message, including
  * the start pulse.
@@ -65,6 +86,9 @@ typedef enum
 #define RAD_MSG_MIN_START_PULSE_LEN_US 100000
 
 #if CONFIG_RAD_RX_ACCEPT_RAD
+rad_parse_state_t rad_message_type_rad_parse(uint32_t *message,
+	                                         uint32_t len,
+	                                         rad_msg_rad_t *msg);
 #if RAD_MSG_MAX_LEN < RAD_MSG_TYPE_RAD_MSG_LEN
 #undef RAD_MSG_MAX_LEN
 #define RAD_MSG_MAX_LEN RAD_MSG_TYPE_RAD_MSG_LEN
@@ -80,6 +104,9 @@ typedef enum
 #endif
 
 #if CONFIG_RAD_RX_ACCEPT_DYNASTY
+rad_parse_state_t rad_message_type_dynasty_parse(uint32_t *message,
+        	                                     uint32_t len,
+	                                             rad_msg_dynasty_t *msg);
 #if RAD_MSG_MAX_LEN < RAD_MSG_TYPE_DYNASTY_MSG_LEN
 #undef RAD_MSG_MAX_LEN
 #define RAD_MSG_MAX_LEN RAD_MSG_TYPE_DYNASTY_MSG_LEN
@@ -95,6 +122,9 @@ typedef enum
 #endif
 
 #if CONFIG_RAD_RX_ACCEPT_LASER_X
+rad_parse_state_t rad_message_type_laser_x_parse(uint32_t *message,
+        	                                     uint32_t len,
+	                                             rad_msg_laser_x_t *msg);
 #if RAD_MSG_MAX_LEN < RAD_MSG_TYPE_LASER_X_MSG_LEN
 #undef RAD_MSG_MAX_LEN
 #define RAD_MSG_MAX_LEN RAD_MSG_TYPE_LASER_X_MSG_LEN

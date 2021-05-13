@@ -26,7 +26,7 @@ extern "C" {
 typedef void (*rad_rx_callback_t) (rad_msg_type_t msg_type, void *data);
 
 typedef int (*rad_rx_init_t)         (const struct device *dev);
-typedef int (*rad_rx_set_callback_t) (const struct device *dev, rad_rx_callback_t *cb);
+typedef int (*rad_rx_set_callback_t) (const struct device *dev, rad_rx_callback_t cb);
 
 /**
  * @brief Rad receiver driver API
@@ -52,7 +52,7 @@ static inline int rad_rx_init(const struct device *dev)
 	return api->init(dev);
 }
 
-static inline int rad_rx_set_callback(const struct device *dev, rad_rx_callback_t *cb)
+static inline int rad_rx_set_callback(const struct device *dev, rad_rx_callback_t cb)
 {
 	struct rad_rx_driver_api *api;
 
