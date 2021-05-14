@@ -12,7 +12,38 @@
 #include <sys/__assert.h>
 
 #include <logging/log.h>
+
+#include <drivers/rad_rx.h>
+
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
+
+void rad_rx_cb(rad_msg_type_t msg_type, void *data)
+{
+    switch (msg_type) {
+    case RAD_MSG_TYPE_LASER_X:
+    {
+        rad_msg_laser_x_t *msg = (rad_msg_laser_x_t*)data;
+        switch (msg->team_id) {
+        case TEAM_ID_LASER_X_BLUE:
+            LOG_INF("Laser X team ID: BLUE");
+            break;
+        case TEAM_ID_LASER_X_RED:
+            LOG_INF("Laser X team ID: RED");
+            break;
+        case TEAM_ID_LASER_X_NEUTRAL:
+            LOG_INF("Laser X team ID: NEUTRAL");
+            break;
+        default:
+            LOG_INF("Invalid Laser X team ID.");
+            break;
+        }
+        break;
+    }
+    default:
+        LOG_INF("Unhandled RAD message type.");
+        break;
+    }
+}
 
 void main(void)
 {
@@ -31,6 +62,13 @@ void main(void)
         return;
     }
     LOG_INF("dev is %p, name is %s", dev, dev->name);
+
+    ret = rad_rx_set_callback(dev, rad_rx_cb);
+    if (ret) {
+        LOG_ERR("Failed to set rad rx callback");
+        return;
+    }
+
     while (1) {
     	k_sleep(K_MSEC(5));
     }

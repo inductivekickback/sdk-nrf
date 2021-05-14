@@ -30,9 +30,6 @@
 
 LOG_MODULE_REGISTER(rad_rx, CONFIG_RAD_RX_LOG_LEVEL);
 
-#define IS_VALID_START_PULSE(value, target) ((target)-RAD_MSG_START_PULSE_MARGIN_US <= (value) && \
-                                                (target)+RAD_MSG_START_PULSE_MARGIN_US >= (value))
-
 typedef enum
 {
     MSG_STATE_WAIT_FOR_LINE_CLEAR,

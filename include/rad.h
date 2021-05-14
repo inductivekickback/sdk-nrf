@@ -38,6 +38,7 @@ typedef enum
 } rad_msg_type_t;
 
 #define RAD_MSG_START_PULSE_MARGIN_US 500 /* A valid start pulse can be +/- this much. */
+#define RAD_MSG_BIT_MARGIN_US         75  /* A valid bit pulse can be +/- this much. */
 
 typedef struct
 {
@@ -47,6 +48,13 @@ typedef struct
 	uint8_t team_id		: 2;
 	uint8_t reserved	: 2;
 } rad_msg_rad_t;
+
+typedef enum
+{
+	TEAM_ID_LASER_X_BLUE    = 0x51,
+	TEAM_ID_LASER_X_RED     = 0x52,
+	TEAM_ID_LASER_X_NEUTRAL = 0x53
+} team_id_laser_x_t;
 
 typedef struct
 {
@@ -80,6 +88,9 @@ typedef struct
 #define RAD_MSG_TYPE_LASER_X_MSG_LEN                17
 #define RAD_MSG_TYPE_LASER_X_MSG_START_PULSE_LEN_US 5950
 #define RAD_MSG_TYPE_LASER_X_MSG_LINE_CLEAR_LEN_US  500
+#define RAD_MSG_TYPE_LASER_X_MSG_SPACE_BIT_LEN_US   450
+#define RAD_MSG_TYPE_LASER_X_MSG_0_BIT_LEN_US    	550
+#define RAD_MSG_TYPE_LASER_X_MSG_1_BIT_LEN_US       1525
 
 #define RAD_MSG_MAX_LEN                0
 #define RAD_MSG_LINE_CLEAR_LEN_US      0
@@ -142,6 +153,12 @@ rad_parse_state_t rad_message_type_laser_x_parse(uint32_t *message,
 #if RAD_MSG_MAX_LEN == 0
 #error No accepted message types enabled.
 #endif
+
+#define IS_VALID_START_PULSE(value, target) ((target)-RAD_MSG_START_PULSE_MARGIN_US <= (value) && \
+                                                (target)+RAD_MSG_START_PULSE_MARGIN_US >= (value))
+
+#define IS_VALID_BIT_PULSE(value, target) ((target)-RAD_MSG_BIT_MARGIN_US <= (value) && \
+                                                (target)+RAD_MSG_BIT_MARGIN_US >= (value))
 
 #ifdef __cplusplus
 }
