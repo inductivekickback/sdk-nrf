@@ -4,19 +4,6 @@
  * SPDX-License-Identifier: LicenseRef-BSD-5-Clause-Nordic
  */
 
-/**
- * TODO: Pin changes are serviced by interrupts so no separate thread is needed.
- *         - This means processing needs to be short.
- *         - Measure the elapsed time and then add item to sys queue
- *         - Then process and create another work queue item to execute callback when necessary.
- *         - But need to reset message index and state from there.
- *       How to synchronize between pin-change interrupt and sys queue processing??????
- *         - If we wait until the line clears then that is added latency.
- *         - If we parse as soon as length is achieved then we need to skip invalid messages.
- *         - Once a message is accepted/rejected by all libs then wait for clear.
- *         - Only try to parse on rising edge.
- */
-
 #define DT_DRV_COMPAT dmv_rad_rx
 
 #include <kernel.h>

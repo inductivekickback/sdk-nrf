@@ -20,6 +20,11 @@ rad_parse_state_t rad_message_type_laser_x_parse(uint32_t          *message,
      *       parsing effectively starts at index 1.
      *
      * NOTE: Message len is validated before calling this function.
+     *
+     * Each message is a start pulse followed by eight bits:
+     *     START: Active pulse of ~5.95ms
+     *     0:     Inactive for ~0.45ms followed by an active pulse of ~0.55ms
+     *     1:     Inactive for ~0.45ms followed by an active pulse of ~1.5ms
      */
     msg->team_id = 0;
     for (int i=1,j=7; j>=0; i+=2,j--) {
