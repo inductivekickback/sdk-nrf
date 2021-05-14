@@ -61,6 +61,21 @@ typedef struct
 	uint8_t team_id;
 } rad_msg_laser_x_t;
 
+typedef enum
+{
+	TEAM_ID_DYNASTY_BLUE  = 1,
+	TEAM_ID_DYNASTY_RED   = 2,
+	TEAM_ID_DYNASTY_GREEN = 3,
+    TEAM_ID_DYNASTY_WHITE = 4
+} team_id_dynasty_t;
+
+typedef enum
+{
+	WEAPON_ID_DYNASTY_PISTOL      = 1,
+	WEAPON_ID_DYNASTY_SHOTGUN_SMG = 2,
+	WEAPON_ID_DYNASTY_ROCKET      = 3
+} weapon_id_dynasty_t;
+
 typedef struct
 {
 	uint8_t team_id;
@@ -84,6 +99,8 @@ typedef struct
 #define RAD_MSG_TYPE_DYNASTY_MSG_LEN                41
 #define RAD_MSG_TYPE_DYNASTY_MSG_START_PULSE_LEN_US 1660
 #define RAD_MSG_TYPE_DYNASTY_MSG_LINE_CLEAR_LEN_US  830
+#define RAD_MSG_TYPE_DYNASTY_MSG_0_BIT_LEN_US    	400
+#define RAD_MSG_TYPE_DYNASTY_MSG_1_BIT_LEN_US       750
 
 #define RAD_MSG_TYPE_LASER_X_MSG_LEN                17
 #define RAD_MSG_TYPE_LASER_X_MSG_START_PULSE_LEN_US 5950

@@ -27,5 +27,5 @@ rad_parse_state_t rad_message_type_rad_parse(uint32_t      *message,
 
     // TODO: Actually verify it.
 
-    return RAD_PARSE_STATE_VALID;
+    return RAD_PARSE_STATE_INVALID;
 }
