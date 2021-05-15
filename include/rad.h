@@ -95,6 +95,9 @@ typedef struct
 #define RAD_MSG_TYPE_RAD_MSG_LEN                    37
 #define RAD_MSG_TYPE_RAD_MSG_START_PULSE_LEN_US     1580
 #define RAD_MSG_TYPE_RAD_MSG_LINE_CLEAR_LEN_US      860
+#define RAD_MSG_TYPE_RAD_MSG_0_BIT_LEN_US           390
+#define RAD_MSG_TYPE_RAD_MSG_1_BIT_LEN_US           780
+#define RAD_MSG_TYPE_RAD_ACTIVE_BIT_LEN_US          390
 
 #define RAD_MSG_TYPE_DYNASTY_MSG_LEN                41
 #define RAD_MSG_TYPE_DYNASTY_MSG_START_PULSE_LEN_US 1660
