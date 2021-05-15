@@ -61,12 +61,8 @@ struct rad_rx_cfg {
     const uint32_t     flags;
 };
 
-static void line_clear_timer_expire(struct k_timer *timer_id)
+static void line_clear(struct rad_rx_data *p_data)
 {
-    // TODO: Ensure that this interrupt has a higher priority than the GPIO interrupt
-    //       to preclude a race condition.
-    struct rad_rx_data *p_data = CONTAINER_OF(timer_id, struct rad_rx_data, timer);
-
     p_data->state = MSG_STATE_WAIT_FOR_PREAMBLE;
     atomic_set(&p_data->index, 0);
 #if CONFIG_RAD_RX_ACCEPT_RAD
@@ -78,6 +74,14 @@ static void line_clear_timer_expire(struct k_timer *timer_id)
 #if CONFIG_RAD_RX_ACCEPT_LASER_X
     p_data->laser_x_parse_state = RAD_PARSE_STATE_WAIT_FOR_START_PULSE;
 #endif
+}
+
+static void line_clear_timer_expire(struct k_timer *timer_id)
+{
+    // TODO: Ensure that this interrupt has a higher priority than the GPIO interrupt
+    //       to preclude a race condition.
+    struct rad_rx_data *p_data = CONTAINER_OF(timer_id, struct rad_rx_data, timer);
+    line_clear(p_data);
 }
 
 static void message_decode(struct k_work *item)
@@ -196,9 +200,10 @@ static void message_decode(struct k_work *item)
 
     if (msg_finished) {
         p_data->state = MSG_STATE_WAIT_FOR_LINE_CLEAR;
+        line_clear(p_data);
+    } else {
+        k_timer_start(&p_data->timer, K_USEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
     }
-
-    k_timer_start(&p_data->timer, K_USEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
 }
 
 static void input_changed(const struct device *dev, struct gpio_callback *cb_data, uint32_t pins)
