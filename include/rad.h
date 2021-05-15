@@ -89,8 +89,8 @@ typedef struct
  *
  * A *_MSG_START_PULSE_LEN_US is the expected length of the start pulse.
  *
- * A *_MSG_LINE_CLEAR_LEN_US is 110% of the expected amount of time that needs to elapse
- * after the final active pulse in order to decide that the message is finished.
+ * A *_MSG_LINE_CLEAR_LEN_US is the expected amount of time that needs to elapse after the final
+ * active pulse in order to decide that the message is finished.
  */
 #define RAD_MSG_TYPE_RAD_MSG_LEN                    37
 #define RAD_MSG_TYPE_RAD_MSG_START_PULSE_LEN_US     1580
@@ -112,9 +112,9 @@ typedef struct
 #define RAD_MSG_TYPE_LASER_X_MSG_0_BIT_LEN_US    	550
 #define RAD_MSG_TYPE_LASER_X_MSG_1_BIT_LEN_US       1525
 
-#define RAD_MSG_MAX_LEN                0
-#define RAD_MSG_LINE_CLEAR_LEN_US      0
-#define RAD_MSG_MIN_START_PULSE_LEN_US 100000
+#define RAD_MSG_MAX_LEN                             0
+#define RAD_MSG_LINE_CLEAR_LEN_US                   0
+#define RAD_MSG_MIN_START_PULSE_LEN_US              100000
 
 #if CONFIG_RAD_RX_ACCEPT_RAD
 rad_parse_state_t rad_msg_type_rad_parse(uint32_t *message,
