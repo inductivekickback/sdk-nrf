@@ -38,7 +38,7 @@ typedef enum
 } rad_msg_type_t;
 
 #define RAD_MSG_START_PULSE_MARGIN_US 500 /* A valid start pulse can be +/- this much. */
-#define RAD_MSG_BIT_MARGIN_US         75  /* A valid bit pulse can be +/- this much. */
+#define RAD_MSG_BIT_MARGIN_US         125 /* A valid bit pulse can be +/- this much. */
 
 typedef struct
 {
@@ -98,13 +98,13 @@ typedef struct
 
 #define RAD_MSG_TYPE_DYNASTY_MSG_LEN                41
 #define RAD_MSG_TYPE_DYNASTY_MSG_START_PULSE_LEN_US 1660
-#define RAD_MSG_TYPE_DYNASTY_MSG_LINE_CLEAR_LEN_US  830
-#define RAD_MSG_TYPE_DYNASTY_MSG_0_BIT_LEN_US    	400
-#define RAD_MSG_TYPE_DYNASTY_MSG_1_BIT_LEN_US       750
+#define RAD_MSG_TYPE_DYNASTY_MSG_LINE_CLEAR_LEN_US  900
+#define RAD_MSG_TYPE_DYNASTY_MSG_0_BIT_LEN_US    	412
+#define RAD_MSG_TYPE_DYNASTY_MSG_1_BIT_LEN_US       747
 
 #define RAD_MSG_TYPE_LASER_X_MSG_LEN                17
 #define RAD_MSG_TYPE_LASER_X_MSG_START_PULSE_LEN_US 5950
-#define RAD_MSG_TYPE_LASER_X_MSG_LINE_CLEAR_LEN_US  500
+#define RAD_MSG_TYPE_LASER_X_MSG_LINE_CLEAR_LEN_US  600
 #define RAD_MSG_TYPE_LASER_X_MSG_SPACE_BIT_LEN_US   450
 #define RAD_MSG_TYPE_LASER_X_MSG_0_BIT_LEN_US    	550
 #define RAD_MSG_TYPE_LASER_X_MSG_1_BIT_LEN_US       1525

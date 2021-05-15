@@ -32,6 +32,7 @@ struct rad_rx_data {
 
     const struct device  *dev;
     struct gpio_callback  cb_data;
+    uint8_t               pin;
 
     rad_rx_callback_t     cb;
 
@@ -196,16 +197,20 @@ static void message_decode(struct k_work *item)
     if (msg_finished) {
         p_data->state = MSG_STATE_WAIT_FOR_LINE_CLEAR;
     }
-
-    k_timer_start(&p_data->timer, K_MSEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
 }
 
 static void input_changed(const struct device *dev, struct gpio_callback *cb_data, uint32_t pins)
 {
     struct rad_rx_data *p_data = CONTAINER_OF(cb_data, struct rad_rx_data, cb_data);
 
+    bool pin_state = gpio_pin_get(dev, p_data->pin);
+    if (pin_state) {
+        k_timer_stop(&p_data->timer);
+    } else {
+        k_timer_start(&p_data->timer, K_USEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
+    }
+
     if (MSG_STATE_WAIT_FOR_LINE_CLEAR == p_data->state) {
-        k_timer_start(&p_data->timer, K_MSEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
         return;
     }
 
@@ -224,7 +229,7 @@ static void input_changed(const struct device *dev, struct gpio_callback *cb_dat
         }
 
         // Only attempt to decode on deasserted edges.
-        if (!gpio_pin_get(dev, pins)) {
+        if (!pin_state) {
             k_work_submit(&p_data->work);
         }
     }
@@ -258,16 +263,16 @@ static int dmv_rad_rx_init(const struct device *dev)
     gpio_init_callback(&p_data->cb_data, input_changed, BIT(p_cfg->pin));
     gpio_add_callback(p_data->dev, &p_data->cb_data);
 
-    p_data->state = MSG_STATE_WAIT_FOR_LINE_CLEAR;
-    p_data->index = ATOMIC_INIT(0);
-    p_data->cb    = NULL;
-    p_data->ready = true;
+    p_data->state     = MSG_STATE_WAIT_FOR_LINE_CLEAR;
+    p_data->index     = ATOMIC_INIT(0);
+    p_data->cb        = NULL;
+    p_data->ready     = true;
+    p_data->pin       = p_cfg->pin;
 
-    k_timer_start(&p_data->timer, K_MSEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
+    if (!gpio_pin_get(p_data->dev, p_cfg->pin)) {
+        k_timer_start(&p_data->timer, K_USEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
+    }
     return 0;
-
-ERR_EXIT:
-    return -ENXIO;
 }
 
 static int dmv_rad_set_callback(const struct device *dev, rad_rx_callback_t cb)
@@ -288,6 +293,7 @@ static const struct rad_rx_driver_api rad_rx_driver_api = {
     static const struct rad_rx_cfg rad_rx_cfg_##n = { \
         .port  = DT_GPIO_LABEL(INST(n), gpios), \
         .pin   = DT_GPIO_PIN(INST(n),   gpios), \
+        .flags = DT_GPIO_FLAGS(INST(n), gpios), \
     }; \
     static struct rad_rx_data rad_rx_data_##n; \
     DEVICE_DEFINE(rad_rx_##n, \
