@@ -97,7 +97,7 @@ typedef struct
 #define RAD_MSG_TYPE_RAD_MSG_LINE_CLEAR_LEN_US      860
 #define RAD_MSG_TYPE_RAD_MSG_0_BIT_LEN_US           390
 #define RAD_MSG_TYPE_RAD_MSG_1_BIT_LEN_US           780
-#define RAD_MSG_TYPE_RAD_ACTIVE_BIT_LEN_US          390
+#define RAD_MSG_TYPE_RAD_MSG_ACTIVE_BIT_LEN_US      390
 
 #define RAD_MSG_TYPE_DYNASTY_MSG_LEN                41
 #define RAD_MSG_TYPE_DYNASTY_MSG_START_PULSE_LEN_US 1660
@@ -116,14 +116,16 @@ typedef struct
 #define RAD_MSG_LINE_CLEAR_LEN_US                   0
 #define RAD_MSG_MIN_START_PULSE_LEN_US              100000
 
-#if CONFIG_RAD_RX_ACCEPT_RAD
-rad_parse_state_t rad_msg_type_rad_parse(uint32_t *message,
-	                                         uint32_t len,
-	                                         rad_msg_rad_t *msg);
+
+#if CONFIG_RAD_MSG_TYPE_RAD
 #if RAD_MSG_MAX_LEN < RAD_MSG_TYPE_RAD_MSG_LEN
 #undef RAD_MSG_MAX_LEN
 #define RAD_MSG_MAX_LEN RAD_MSG_TYPE_RAD_MSG_LEN
 #endif
+#if CONFIG_RAD_RX_ACCEPT_RAD
+rad_parse_state_t rad_msg_type_rad_parse(uint32_t *message,
+	                                         uint32_t len,
+	                                         rad_msg_rad_t *msg);
 #if RAD_MSG_MIN_START_PULSE_LEN_US > RAD_MSG_TYPE_RAD_MSG_START_PULSE_LEN_US
 #undef RAD_MSG_MIN_START_PULSE_LEN_US
 #define RAD_MSG_MIN_START_PULSE_LEN_US RAD_MSG_TYPE_RAD_MSG_START_PULSE_LEN_US
@@ -132,16 +134,19 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t *message,
 #undef RAD_MSG_LINE_CLEAR_LEN_US
 #define RAD_MSG_LINE_CLEAR_LEN_US RAD_MSG_TYPE_RAD_MSG_LINE_CLEAR_LEN_US
 #endif
-#endif
+#endif /* CONFIG_RAD_RX_ACCEPT_RAD */
+#endif /* CONFIG_RAD_MSG_TYPE_RAD */
 
-#if CONFIG_RAD_RX_ACCEPT_DYNASTY
-rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t *message,
-        	                                     uint32_t len,
-	                                             rad_msg_dynasty_t *msg);
+
+#if CONFIG_RAD_MSG_TYPE_DYNASTY
 #if RAD_MSG_MAX_LEN < RAD_MSG_TYPE_DYNASTY_MSG_LEN
 #undef RAD_MSG_MAX_LEN
 #define RAD_MSG_MAX_LEN RAD_MSG_TYPE_DYNASTY_MSG_LEN
 #endif
+#if CONFIG_RAD_RX_ACCEPT_DYNASTY
+rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t *message,
+        	                                     uint32_t len,
+	                                             rad_msg_dynasty_t *msg);
 #if RAD_MSG_MIN_START_PULSE_LEN_US > RAD_MSG_TYPE_DYNASTY_MSG_START_PULSE_LEN_US
 #undef RAD_MSG_MIN_START_PULSE_LEN_US
 #define RAD_MSG_MIN_START_PULSE_LEN_US RAD_MSG_TYPE_DYNASTY_MSG_START_PULSE_LEN_US
@@ -150,16 +155,19 @@ rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t *message,
 #undef RAD_MSG_LINE_CLEAR_LEN_US
 #define RAD_MSG_LINE_CLEAR_LEN_US RAD_MSG_TYPE_DYNASTY_MSG_LINE_CLEAR_LEN_US
 #endif
-#endif
+#endif /* CONFIG_RAD_RX_ACCEPT_DYNASTY */
+#endif /* CONFIG_RAD_MSG_TYPE_DYNASTY */
 
-#if CONFIG_RAD_RX_ACCEPT_LASER_X
-rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t *message,
-        	                                     uint32_t len,
-	                                             rad_msg_laser_x_t *msg);
+
+#if CONFIG_RAD_MSG_TYPE_LASER_X
 #if RAD_MSG_MAX_LEN < RAD_MSG_TYPE_LASER_X_MSG_LEN
 #undef RAD_MSG_MAX_LEN
 #define RAD_MSG_MAX_LEN RAD_MSG_TYPE_LASER_X_MSG_LEN
 #endif
+#if CONFIG_RAD_RX_ACCEPT_LASER_X
+rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t *message,
+        	                                     uint32_t len,
+	                                             rad_msg_laser_x_t *msg);
 #if RAD_MSG_MIN_START_PULSE_LEN_US > RAD_MSG_TYPE_LASER_X_MSG_START_PULSE_LEN_US
 #undef RAD_MSG_MIN_START_PULSE_LEN_US
 #define RAD_MSG_MIN_START_PULSE_LEN_US RAD_MSG_TYPE_LASER_X_MSG_START_PULSE_LEN_US
@@ -168,10 +176,19 @@ rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t *message,
 #undef RAD_MSG_LINE_CLEAR_LEN_US
 #define RAD_MSG_LINE_CLEAR_LEN_US RAD_MSG_TYPE_LASER_X_MSG_LINE_CLEAR_LEN_US
 #endif
+#endif /* CONFIG_RAD_RX_ACCEPT_LASER_X */
+#endif /* CONFIG_RAD_MSG_TYPE_LASER_X */
+
+#if CONFIG_RAD_TX
+#if RAD_MSG_MAX_LEN == 0
+#error No RAD TX message types enabled
+#endif
 #endif
 
-#if RAD_MSG_MAX_LEN == 0
-#error No accepted message types enabled.
+#if CONFIG_RAD_RX
+#if RAD_MSG_LINE_CLEAR_LEN_US == 0
+#error No RAD RX message types enabled
+#endif
 #endif
 
 #define IS_VALID_START_PULSE(value, target) ((target)-RAD_MSG_START_PULSE_MARGIN_US <= (value) && \

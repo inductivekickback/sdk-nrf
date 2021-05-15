@@ -15,18 +15,21 @@ if RAD_TX
 
 config RAD_TX_DYNASTY
 	bool "Enable sending messages to Dynasty Toys blasters (probably also Kidzlane, JOYMOR, etc.)"
+	select RAD_MSG_TYPE_DYNASTY
 	default y
 	help
 		Enable sending messages to Dynasty Toys blasters, a generic and now defunct brand
 
 config RAD_TX_LASER_X
 	bool "Enable sending messages to Laser X blasters"
+	select RAD_MSG_TYPE_LASER_X
 	default y
 	help
 		Enable sending messages to Laser X blasters
 
 config RAD_TX_RAD
 	bool "Enable sending messages to Rad blasters"
+	select RAD_MSG_TYPE_RAD
 	default y
 	help
 		Enable sending messages to Rad blasters
