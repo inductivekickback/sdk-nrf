@@ -112,7 +112,7 @@ static void message_decode(struct k_work *item)
             break;
         }
 
-        p_data->rad_parse_state = rad_message_type_rad_parse(&p_data->message[0], len, &rad_msg);
+        p_data->rad_parse_state = rad_msg_type_rad_parse(&p_data->message[0], len, &rad_msg);
         if (RAD_PARSE_STATE_VALID == p_data->rad_parse_state) {
             if (p_data->cb) {
                 p_data->cb(RAD_MSG_TYPE_RAD, (void*)&rad_msg);
@@ -145,7 +145,7 @@ static void message_decode(struct k_work *item)
             break;
         }
 
-        p_data->laser_x_parse_state = rad_message_type_laser_x_parse(&p_data->message[0],
+        p_data->laser_x_parse_state = rad_msg_type_laser_x_parse(&p_data->message[0],
                                                                      len,
                                                                      &laser_x_msg);
         if (RAD_PARSE_STATE_VALID == p_data->laser_x_parse_state) {
@@ -180,7 +180,7 @@ static void message_decode(struct k_work *item)
             break;
         }
 
-        p_data->dynasty_parse_state = rad_message_type_dynasty_parse(&p_data->message[0],
+        p_data->dynasty_parse_state = rad_msg_type_dynasty_parse(&p_data->message[0],
                                                                      len,
                                                                      &dynasty_msg);
         if (RAD_PARSE_STATE_VALID == p_data->dynasty_parse_state) {

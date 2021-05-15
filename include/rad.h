@@ -117,7 +117,7 @@ typedef struct
 #define RAD_MSG_MIN_START_PULSE_LEN_US 100000
 
 #if CONFIG_RAD_RX_ACCEPT_RAD
-rad_parse_state_t rad_message_type_rad_parse(uint32_t *message,
+rad_parse_state_t rad_msg_type_rad_parse(uint32_t *message,
 	                                         uint32_t len,
 	                                         rad_msg_rad_t *msg);
 #if RAD_MSG_MAX_LEN < RAD_MSG_TYPE_RAD_MSG_LEN
@@ -135,7 +135,7 @@ rad_parse_state_t rad_message_type_rad_parse(uint32_t *message,
 #endif
 
 #if CONFIG_RAD_RX_ACCEPT_DYNASTY
-rad_parse_state_t rad_message_type_dynasty_parse(uint32_t *message,
+rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t *message,
         	                                     uint32_t len,
 	                                             rad_msg_dynasty_t *msg);
 #if RAD_MSG_MAX_LEN < RAD_MSG_TYPE_DYNASTY_MSG_LEN
@@ -153,7 +153,7 @@ rad_parse_state_t rad_message_type_dynasty_parse(uint32_t *message,
 #endif
 
 #if CONFIG_RAD_RX_ACCEPT_LASER_X
-rad_parse_state_t rad_message_type_laser_x_parse(uint32_t *message,
+rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t *message,
         	                                     uint32_t len,
 	                                             rad_msg_laser_x_t *msg);
 #if RAD_MSG_MAX_LEN < RAD_MSG_TYPE_LASER_X_MSG_LEN
