@@ -197,20 +197,27 @@ static void message_decode(struct k_work *item)
     if (msg_finished) {
         p_data->state = MSG_STATE_WAIT_FOR_LINE_CLEAR;
     }
+
+    k_timer_start(&p_data->timer, K_USEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
 }
 
 static void input_changed(const struct device *dev, struct gpio_callback *cb_data, uint32_t pins)
 {
+    /**
+     * line_clear_timer_expired will preempt message_decode so the timer should only be started
+     * when the IR receiver's pin is deasserted AND message_decode has had a chance to run.
+     */
     struct rad_rx_data *p_data = CONTAINER_OF(cb_data, struct rad_rx_data, cb_data);
 
     bool pin_state = gpio_pin_get(dev, p_data->pin);
     if (pin_state) {
         k_timer_stop(&p_data->timer);
-    } else {
-        k_timer_start(&p_data->timer, K_USEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
     }
 
     if (MSG_STATE_WAIT_FOR_LINE_CLEAR == p_data->state) {
+        if (!pin_state) {
+            k_timer_start(&p_data->timer, K_USEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
+        }
         return;
     }
 
@@ -219,8 +226,12 @@ static void input_changed(const struct device *dev, struct gpio_callback *cb_dat
 
     if (0 < index) {
         if (RAD_MSG_MAX_LEN < index) {
+            if (!pin_state) {
+                k_timer_start(&p_data->timer, K_USEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
+            }
             return;
         }
+
         if (p_data->timestamp <= now) {
             p_data->message[index-1] = (now - p_data->timestamp);
         } else {
@@ -228,7 +239,6 @@ static void input_changed(const struct device *dev, struct gpio_callback *cb_dat
             p_data->message[index-1] += now;
         }
 
-        // Only attempt to decode on deasserted edges.
         if (!pin_state) {
             k_work_submit(&p_data->work);
         }
