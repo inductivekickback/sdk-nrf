@@ -9,12 +9,12 @@ menuconfig RAD_TX
 	bool "Rad laser tag transmitter driver"
 	select GPIO
 	help
-	  Enable Rad laster tag transmitter driver
+	  Enable Rad laser tag transmitter driver
 
 if RAD_TX
 
 config RAD_TX_DYNASTY
-	bool "Enable sending messages to Dynasty Toys blasters (probably also Kidzlane, JOYMOR, etc.)"
+	bool "Enable sending messages to Dynasty Toys blasters (probably also Lightbattle, Kidzlane, JOYMOR, etc.)"
 	select RAD_MSG_TYPE_DYNASTY
 	default y
 	help

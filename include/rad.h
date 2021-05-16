@@ -123,9 +123,9 @@ typedef struct
 #define RAD_MSG_MAX_LEN RAD_MSG_TYPE_RAD_MSG_LEN
 #endif
 #if CONFIG_RAD_RX_ACCEPT_RAD
-rad_parse_state_t rad_msg_type_rad_parse(uint32_t *message,
-	                                         uint32_t len,
-	                                         rad_msg_rad_t *msg);
+rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
+	                                     uint32_t       len,
+	                                     rad_msg_rad_t *msg);
 #if RAD_MSG_MIN_START_PULSE_LEN_US > RAD_MSG_TYPE_RAD_MSG_START_PULSE_LEN_US
 #undef RAD_MSG_MIN_START_PULSE_LEN_US
 #define RAD_MSG_MIN_START_PULSE_LEN_US RAD_MSG_TYPE_RAD_MSG_START_PULSE_LEN_US
@@ -144,9 +144,9 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t *message,
 #define RAD_MSG_MAX_LEN RAD_MSG_TYPE_DYNASTY_MSG_LEN
 #endif
 #if CONFIG_RAD_RX_ACCEPT_DYNASTY
-rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t *message,
-        	                                     uint32_t len,
-	                                             rad_msg_dynasty_t *msg);
+rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
+        	                                 uint32_t           len,
+	                                         rad_msg_dynasty_t *msg);
 #if RAD_MSG_MIN_START_PULSE_LEN_US > RAD_MSG_TYPE_DYNASTY_MSG_START_PULSE_LEN_US
 #undef RAD_MSG_MIN_START_PULSE_LEN_US
 #define RAD_MSG_MIN_START_PULSE_LEN_US RAD_MSG_TYPE_DYNASTY_MSG_START_PULSE_LEN_US
@@ -165,9 +165,9 @@ rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t *message,
 #define RAD_MSG_MAX_LEN RAD_MSG_TYPE_LASER_X_MSG_LEN
 #endif
 #if CONFIG_RAD_RX_ACCEPT_LASER_X
-rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t *message,
-        	                                     uint32_t len,
-	                                             rad_msg_laser_x_t *msg);
+rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,
+        	                                 uint32_t           len,
+	                                         rad_msg_laser_x_t *msg);
 #if RAD_MSG_MIN_START_PULSE_LEN_US > RAD_MSG_TYPE_LASER_X_MSG_START_PULSE_LEN_US
 #undef RAD_MSG_MIN_START_PULSE_LEN_US
 #define RAD_MSG_MIN_START_PULSE_LEN_US RAD_MSG_TYPE_LASER_X_MSG_START_PULSE_LEN_US
