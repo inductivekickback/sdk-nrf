@@ -46,10 +46,10 @@ void rad_rx_cb(rad_msg_type_t msg_type, void *data)
         }
         break;
     case RAD_MSG_TYPE_RAD:
-        LOG_INF("RAD message received");
+        LOG_INF("Rad message received");
         break;
     default:
-        LOG_INF("Unhandled RAD message type (%d).", msg_type);
+        LOG_INF("Unhandled Rad message type (%d).", msg_type);
         break;
     }
 }

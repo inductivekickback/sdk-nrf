@@ -181,13 +181,13 @@ rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t *message,
 
 #if CONFIG_RAD_TX
 #if RAD_MSG_MAX_LEN == 0
-#error No RAD TX message types enabled
+#error No Rad TX message types enabled
 #endif
 #endif
 
 #if CONFIG_RAD_RX
 #if RAD_MSG_LINE_CLEAR_LEN_US == 0
-#error No RAD RX message types enabled
+#error No Rad RX message types enabled
 #endif
 #endif
 
