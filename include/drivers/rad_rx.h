@@ -66,9 +66,9 @@ typedef enum
 } rad_parse_state_t;
 
 #if CONFIG_RAD_MSG_TYPE_RAD
-#if RAD_RX_MSG_MAX_LEN < RAD_MSG_TYPE_RAD_LEN
+#if RAD_RX_MSG_MAX_LEN < RAD_RX_MSG_TYPE_RAD_LEN
 #undef RAD_RX_MSG_MAX_LEN
-#define RAD_RX_MSG_MAX_LEN RAD_MSG_TYPE_RAD_LEN
+#define RAD_RX_MSG_MAX_LEN RAD_RX_MSG_TYPE_RAD_LEN
 #endif
 #if CONFIG_RAD_RX_ACCEPT_RAD
 rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
@@ -83,33 +83,33 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
 
 
 #if CONFIG_RAD_MSG_TYPE_DYNASTY
-#if RAD_RX_MAX_LEN < RAD_MSG_TYPE_DYNASTY_MSG_LEN
-#undef RAD_RX_MAX_LEN
-#define RAD_RX_MAX_LEN RAD_MSG_TYPE_DYNASTY_MSG_LEN
+#if RAD_RX_MSG_MAX_LEN < RAD_RX_MSG_TYPE_DYNASTY_LEN
+#undef RAD_RX_MSG_MAX_LEN
+#define RAD_RX_MSG_MAX_LEN RAD_RX_MSG_TYPE_DYNASTY_LEN
 #endif
 #if CONFIG_RAD_RX_ACCEPT_DYNASTY
 rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
                                              uint32_t           len,
                                              rad_msg_dynasty_t *msg);
-#if RAD_RX_LINE_CLEAR_LEN_US < RAD_MSG_TYPE_DYNASTY_MSG_LINE_CLEAR_LEN_US
+#if RAD_RX_LINE_CLEAR_LEN_US < RAD_MSG_TYPE_DYNASTY_LINE_CLEAR_LEN_US
 #undef RAD_RX_LINE_CLEAR_LEN_US
-#define RAD_RX_LINE_CLEAR_LEN_US RAD_MSG_TYPE_DYNASTY_MSG_LINE_CLEAR_LEN_US
+#define RAD_RX_LINE_CLEAR_LEN_US RAD_MSG_TYPE_DYNASTY_LINE_CLEAR_LEN_US
 #endif
 #endif /* CONFIG_RAD_RX_ACCEPT_DYNASTY */
 #endif /* CONFIG_RAD_MSG_TYPE_DYNASTY */
 
 #if CONFIG_RAD_MSG_TYPE_LASER_X
-#if RAD_RX_MAX_LEN < RAD_MSG_TYPE_LASER_X_MSG_LEN
-#undef RAD_RX_MAX_LEN
-#define RAD_RX_MAX_LEN RAD_MSG_TYPE_LASER_X_MSG_LEN
+#if RAD_RX_MSG_MAX_LEN < RAD_RX_MSG_TYPE_LASER_X_LEN
+#undef RAD_RX_MSG_MAX_LEN
+#define RAD_RX_MAX_LEN RAD_RX_MSG_TYPE_LASER_X_LEN
 #endif
 #if CONFIG_RAD_RX_ACCEPT_LASER_X
 rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,
                                              uint32_t           len,
                                              rad_msg_laser_x_t *msg);
-#if RAD_RX_LINE_CLEAR_LEN_US < RAD_MSG_TYPE_LASER_X_MSG_LINE_CLEAR_LEN_US
+#if RAD_RX_LINE_CLEAR_LEN_US < RAD_MSG_TYPE_LASER_X_LINE_CLEAR_LEN_US
 #undef RAD_RX_LINE_CLEAR_LEN_US
-#define RAD_RX_LINE_CLEAR_LEN_US RAD_MSG_TYPE_LASER_X_MSG_LINE_CLEAR_LEN_US
+#define RAD_RX_LINE_CLEAR_LEN_US RAD_MSG_TYPE_LASER_X_LINE_CLEAR_LEN_US
 #endif
 #endif /* CONFIG_RAD_RX_ACCEPT_LASER_X */
 #endif /* CONFIG_RAD_MSG_TYPE_LASER_X */
