@@ -7,7 +7,8 @@
 #include <sys/util.h>
 #include <logging/log.h>
 
-#include <rad.h>
+#include <drivers/rad_rx.h>
+#include <drivers/rad_tx.h>
 
 LOG_MODULE_REGISTER(rad_message_type_rad, CONFIG_RAD_MSG_TYPE_RAD_LOG_LEVEL);
 
@@ -30,12 +31,12 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
 
 	msg->reserved = 0;
 	for (int j=1; j>=0; i+=2,j--) {
-	    if (!IS_VALID_BIT_PULSE(message[i+1], RAD_MSG_TYPE_RAD_MSG_ACTIVE_BIT_LEN_US)) {
+	    if (!IS_VALID_BIT_PULSE(message[i+1], RAD_RX_MSG_TYPE_RAD_ACTIVE_BIT_LEN_US)) {
 	    	return RAD_PARSE_STATE_INVALID;
 	    }
-        if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_RAD_MSG_0_BIT_LEN_US)) {
+        if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_RAD_0_BIT_LEN_US)) {
             // This is a zero bit.
-        } else if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_RAD_MSG_1_BIT_LEN_US)) {
+        } else if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_RAD_1_BIT_LEN_US)) {
             // This is a one bit.
             msg->reserved |= (1<<j);
         } else {
@@ -45,12 +46,12 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
 
 	msg->team_id = 0;
 	for (int j=1; j>=0; i+=2,j--) {
-	    if (!IS_VALID_BIT_PULSE(message[i+1], RAD_MSG_TYPE_RAD_MSG_ACTIVE_BIT_LEN_US)) {
+	    if (!IS_VALID_BIT_PULSE(message[i+1], RAD_RX_MSG_TYPE_RAD_ACTIVE_BIT_LEN_US)) {
 	    	return RAD_PARSE_STATE_INVALID;
 	    }
-        if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_RAD_MSG_0_BIT_LEN_US)) {
+        if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_RAD_0_BIT_LEN_US)) {
             // This is a zero bit.
-        } else if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_RAD_MSG_1_BIT_LEN_US)) {
+        } else if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_RAD_1_BIT_LEN_US)) {
             // This is a one bit.
             msg->team_id |= (1<<j);
         } else {
@@ -60,12 +61,12 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
 
 	msg->player_id = 0;
 	for (int j=3; j>=0; i+=2,j--) {
-	    if (!IS_VALID_BIT_PULSE(message[i+1], RAD_MSG_TYPE_RAD_MSG_ACTIVE_BIT_LEN_US)) {
+	    if (!IS_VALID_BIT_PULSE(message[i+1], RAD_RX_MSG_TYPE_RAD_ACTIVE_BIT_LEN_US)) {
 	    	return RAD_PARSE_STATE_INVALID;
 	    }
-        if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_RAD_MSG_0_BIT_LEN_US)) {
+        if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_RAD_0_BIT_LEN_US)) {
             // This is a zero bit.
-        } else if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_RAD_MSG_1_BIT_LEN_US)) {
+        } else if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_RAD_1_BIT_LEN_US)) {
             // This is a one bit.
             msg->player_id |= (1<<j);
         } else {
@@ -75,12 +76,12 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
 
 	msg->special = 0;
 	for (int j=3; j>=0; i+=2,j--) {
-	    if (!IS_VALID_BIT_PULSE(message[i+1], RAD_MSG_TYPE_RAD_MSG_ACTIVE_BIT_LEN_US)) {
+	    if (!IS_VALID_BIT_PULSE(message[i+1], RAD_RX_MSG_TYPE_RAD_ACTIVE_BIT_LEN_US)) {
 	    	return RAD_PARSE_STATE_INVALID;
 	    }
-        if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_RAD_MSG_0_BIT_LEN_US)) {
+        if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_RAD_0_BIT_LEN_US)) {
             // This is a zero bit.
-        } else if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_RAD_MSG_1_BIT_LEN_US)) {
+        } else if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_RAD_1_BIT_LEN_US)) {
             // This is a one bit.
             msg->special |= (1<<j);
         } else {
@@ -90,12 +91,12 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
 
 	msg->damage = 0;
 	for (int j=3; j>=0; i+=2,j--) {
-	    if (!IS_VALID_BIT_PULSE(message[i+1], RAD_MSG_TYPE_RAD_MSG_ACTIVE_BIT_LEN_US)) {
+	    if (!IS_VALID_BIT_PULSE(message[i+1], RAD_RX_MSG_TYPE_RAD_ACTIVE_BIT_LEN_US)) {
 	    	return RAD_PARSE_STATE_INVALID;
 	    }
-        if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_RAD_MSG_0_BIT_LEN_US)) {
+        if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_RAD_0_BIT_LEN_US)) {
             // This is a zero bit.
-        } else if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_RAD_MSG_1_BIT_LEN_US)) {
+        } else if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_RAD_1_BIT_LEN_US)) {
             // This is a one bit.
             msg->damage |= (1<<j);
         } else {

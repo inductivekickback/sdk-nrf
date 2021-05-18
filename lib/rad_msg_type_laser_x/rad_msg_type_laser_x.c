@@ -9,9 +9,10 @@
 
 #include <nrfx_pwm.h>
 
+#include <drivers/rad_rx.h>
 #include <drivers/rad_tx.h>
 
-#define REFRESH_COUNT_28US    0
+#define REFRESH_COUNT_28US 0
 
 #define SPACE RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0, \
               RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0, \
@@ -56,11 +57,11 @@ rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,
      */
     msg->team_id = 0;
     for (int i=1,j=7; j>=0; i+=2,j--) {
-        if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_LASER_X_MSG_SPACE_BIT_LEN_US)) {
-            if (IS_VALID_BIT_PULSE(message[i+1], RAD_MSG_TYPE_LASER_X_MSG_0_BIT_LEN_US)) {
+        if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_LASER_X_SPACE_BIT_LEN_US)) {
+            if (IS_VALID_BIT_PULSE(message[i+1], RAD_RX_MSG_TYPE_LASER_X_0_BIT_LEN_US)) {
                 // This is a zero bit.
                 continue;
-            } else if (IS_VALID_BIT_PULSE(message[i+1], RAD_MSG_TYPE_LASER_X_MSG_1_BIT_LEN_US)) {
+            } else if (IS_VALID_BIT_PULSE(message[i+1], RAD_RX_MSG_TYPE_LASER_X_1_BIT_LEN_US)) {
                 // This is a one bit.
                 msg->team_id |= (1<<j);
                 continue;

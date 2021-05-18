@@ -29,6 +29,48 @@ extern "C" {
 #define RAD_TX_DUTY_CYCLE_0         RAD_TX_TICKS_PER_PERIOD
 #define RAD_TX_DUTY_CYCLE_50        (RAD_TX_TICKS_PER_PERIOD / 2)
 
+#if CONFIG_RAD_MSG_TYPE_LASER_X
+#if CONFIG_RAD_TX_LASER_X
+int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
+                                uint32_t         *refresh_count,
+                                const uint16_t  **buf,
+                                uint32_t         *len);
+#endif /* CONFIG_RAD_TX_LASER_X */
+#endif /* CONFIG_RAD_MSG_TYPE_LASER_X */
+
+#define RAD_TX_MSG_TYPE_RAD_MSG_LEN     37
+#define RAD_TX_MSG_TYPE_DYNASTY_MSG_LEN 37
+#define RAD_TX_MSG_TYPE_LASER_X_MSG_LEN 37
+
+#define RAD_TX_MSG_MAX_LEN              0
+
+#if CONFIG_RAD_TX_RAD
+#if RAD_TX_MSG_MAX_LEN < RAD_TX_MSG_TYPE_RAD_MSG_LEN
+#undef RAD_TX_MSG_MAX_LEN
+#define RAD_TX_MSG_MAX_LEN RAD_TX_MSG_TYPE_RAD_MSG_LEN
+#endif
+#endif /* CONFIG_RAD_TX_RAD */
+
+#if CONFIG_RAD_TX_DYNASTY
+#if RAD_TX_MSG_MAX_LEN < RAD_TX_MSG_TYPE_DYNASTY_MSG_LEN
+#undef RAD_TX_MSG_MAX_LEN
+#define RAD_TX_MSG_MAX_LEN RAD_TX_MSG_TYPE_DYNASTY_MSG_LEN
+#endif
+#endif /* CONFIG_RAD_TX_DYNASTY */
+
+#if CONFIG_RAD_TX_LASER_X
+#if RAD_TX_MSG_MAX_LEN < RAD_TX_MSG_TYPE_LASER_X_MSG_LEN
+#undef RAD_TX_MSG_MAX_LEN
+#define RAD_TX_MSG_MAX_LEN RAD_TX_MSG_TYPE_LASER_X_MSG_LEN
+#endif
+#endif /* CONFIG_RAD_TX_LASER_X */
+
+#if CONFIG_RAD_TX
+#if RAD_TX_MSG_MAX_LEN == 0
+#error No Rad TX message types enabled
+#endif
+#endif
+
 typedef int (*rad_tx_init_t) (const struct device *dev);
 typedef int (*rad_tx_blast_t)(const struct device *dev,
                                 uint32_t refresh_count,

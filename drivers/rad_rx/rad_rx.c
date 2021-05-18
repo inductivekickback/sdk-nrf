@@ -39,7 +39,7 @@ struct rad_rx_data {
     struct k_timer        timer;
     struct k_work         work;
 
-    uint32_t              message[RAD_MSG_MAX_LEN];
+    uint32_t              message[RAD_RX_MSG_MAX_LEN];
     uint32_t              timestamp;
     atomic_t              index;
     msg_state_t           state;
@@ -99,7 +99,7 @@ static void message_decode(struct k_work *item)
     rad_msg_rad_t rad_msg;
     switch (p_data->rad_parse_state) {
     case RAD_PARSE_STATE_WAIT_FOR_START_PULSE:
-        if (!IS_VALID_START_PULSE(p_data->message[0], RAD_MSG_TYPE_RAD_MSG_START_PULSE_LEN_US)) {
+        if (!IS_VALID_START_PULSE(p_data->message[0], RAD_RX_MSG_TYPE_RAD_START_PULSE_LEN_US)) {
             p_data->rad_parse_state = RAD_PARSE_STATE_INVALID;
             break;
         } else {
@@ -108,10 +108,10 @@ static void message_decode(struct k_work *item)
             // Fall-through into the next state in case the entire message is received.
         }
     case RAD_PARSE_STATE_INCOMPLETE:
-        if (RAD_MSG_TYPE_RAD_MSG_LEN > len) {
+        if (RAD_RX_MSG_TYPE_RAD_LEN > len) {
             msg_finished = false;
             break;
-        } else if (RAD_MSG_TYPE_RAD_MSG_LEN < len) {
+        } else if (RAD_RX_MSG_TYPE_RAD_LEN < len) {
             p_data->rad_parse_state = RAD_PARSE_STATE_INVALID;
             break;
         }
@@ -132,7 +132,7 @@ static void message_decode(struct k_work *item)
     rad_msg_laser_x_t laser_x_msg;
     switch (p_data->laser_x_parse_state) {
     case RAD_PARSE_STATE_WAIT_FOR_START_PULSE:
-        if (!IS_VALID_START_PULSE(p_data->message[0], RAD_MSG_TYPE_LASER_X_MSG_START_PULSE_LEN_US)){
+        if (!IS_VALID_START_PULSE(p_data->message[0], RAD_RX_MSG_TYPE_LASER_X_START_PULSE_LEN_US)){
             p_data->laser_x_parse_state = RAD_PARSE_STATE_INVALID;
             break;
         } else {
@@ -141,10 +141,10 @@ static void message_decode(struct k_work *item)
             // Fall-through into the next state in case the entire message is received.
         }
     case RAD_PARSE_STATE_INCOMPLETE:
-        if (RAD_MSG_TYPE_LASER_X_MSG_LEN > len) {
+        if (RAD_RX_MSG_TYPE_LASER_X_LEN > len) {
             msg_finished = false;
             break;
-        } else if (RAD_MSG_TYPE_LASER_X_MSG_LEN < len) {
+        } else if (RAD_RX_MSG_TYPE_LASER_X_LEN < len) {
             p_data->laser_x_parse_state = RAD_PARSE_STATE_INVALID;
             break;
         }
@@ -167,7 +167,7 @@ static void message_decode(struct k_work *item)
     rad_msg_dynasty_t dynasty_msg;
     switch (p_data->dynasty_parse_state) {
     case RAD_PARSE_STATE_WAIT_FOR_START_PULSE:
-        if (!IS_VALID_START_PULSE(p_data->message[0], RAD_MSG_TYPE_DYNASTY_MSG_START_PULSE_LEN_US)){
+        if (!IS_VALID_START_PULSE(p_data->message[0], RAD_RX_MSG_TYPE_DYNASTY_START_PULSE_LEN_US)){
             p_data->dynasty_parse_state = RAD_PARSE_STATE_INVALID;
             break;
         } else {
@@ -176,10 +176,10 @@ static void message_decode(struct k_work *item)
             // Fall-through into the next state in case the entire message is received.
         }
     case RAD_PARSE_STATE_INCOMPLETE:
-        if (RAD_MSG_TYPE_DYNASTY_MSG_LEN > len) {
+        if (RAD_RX_MSG_TYPE_DYNASTY_LEN > len) {
             msg_finished = false;
             break;
-        } else if (RAD_MSG_TYPE_DYNASTY_MSG_LEN < len) {
+        } else if (RAD_RX_MSG_TYPE_DYNASTY_LEN < len) {
             p_data->dynasty_parse_state = RAD_PARSE_STATE_INVALID;
             break;
         }
@@ -202,7 +202,7 @@ static void message_decode(struct k_work *item)
         p_data->state = MSG_STATE_WAIT_FOR_LINE_CLEAR;
         line_clear(p_data);
     } else {
-        k_timer_start(&p_data->timer, K_USEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
+        k_timer_start(&p_data->timer, K_USEC(RAD_RX_LINE_CLEAR_LEN_US), K_NO_WAIT);
     }
 }
 
@@ -221,7 +221,7 @@ static void input_changed(const struct device *dev, struct gpio_callback *cb_dat
 
     if (MSG_STATE_WAIT_FOR_LINE_CLEAR == p_data->state) {
         if (!pin_state) {
-            k_timer_start(&p_data->timer, K_USEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
+            k_timer_start(&p_data->timer, K_USEC(RAD_RX_LINE_CLEAR_LEN_US), K_NO_WAIT);
         }
         return;
     }
@@ -230,9 +230,9 @@ static void input_changed(const struct device *dev, struct gpio_callback *cb_dat
     uint32_t index = atomic_inc(&p_data->index); /* index is set to the pre-incremented valued */
 
     if (0 < index) {
-        if (RAD_MSG_MAX_LEN < index) {
+        if (RAD_RX_MSG_MAX_LEN < index) {
             if (!pin_state) {
-                k_timer_start(&p_data->timer, K_USEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
+                k_timer_start(&p_data->timer, K_USEC(RAD_RX_LINE_CLEAR_LEN_US), K_NO_WAIT);
             }
             return;
         }
@@ -285,7 +285,7 @@ static int dmv_rad_rx_init(const struct device *dev)
     p_data->pin       = p_cfg->pin;
 
     if (!gpio_pin_get(p_data->dev, p_cfg->pin)) {
-        k_timer_start(&p_data->timer, K_USEC(RAD_MSG_LINE_CLEAR_LEN_US), K_NO_WAIT);
+        k_timer_start(&p_data->timer, K_USEC(RAD_RX_LINE_CLEAR_LEN_US), K_NO_WAIT);
     }
     return 0;
 }
