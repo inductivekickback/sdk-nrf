@@ -14,6 +14,7 @@
 #include <logging/log.h>
 
 #include <drivers/rad_rx.h>
+#include <drivers/rad_tx.h>
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
@@ -57,28 +58,50 @@ void rad_rx_cb(rad_msg_type_t msg_type, void *data)
 void main(void)
 {
     int ret;
-    const struct device *dev;
+    const struct device *rx_dev;
+    const struct device *tx_dev;
 
     if (IS_ENABLED(CONFIG_LOG_BACKEND_RTT)) {
         /* Give RTT log time to be flushed before executing tests */
         k_sleep(K_MSEC(500));
     }
 
-    dev = device_get_binding("rad_rx0");
+    rx_dev = device_get_binding("rad_rx0");
 
-    if (dev == NULL) {
-        LOG_ERR("Failed to get dev binding");
+    if (rx_dev == NULL) {
+        LOG_ERR("Failed to get RX dev binding");
         return;
     }
-    LOG_INF("dev is %p, name is %s", dev, dev->name);
+    LOG_INF("RX dev is %p, name is %s", rx_dev, rx_dev->name);
 
-    ret = rad_rx_set_callback(dev, rad_rx_cb);
+    ret = rad_rx_set_callback(rx_dev, rad_rx_cb);
     if (ret) {
-        LOG_ERR("Failed to set rad rx callback");
+        LOG_ERR("Failed to set Rad RX callback");
         return;
     }
+
+    tx_dev = device_get_binding("rad_tx0");
+
+    if (tx_dev == NULL) {
+        LOG_ERR("Failed to get TX dev binding");
+        return;
+    }
+    LOG_INF("TX dev is %p, name is %s", tx_dev, tx_dev->name);
 
     while (1) {
-    	k_sleep(K_MSEC(5));
+        uint32_t        refresh_count;
+        const uint16_t *data;
+        uint32_t        len;
+
+        ret = rad_msg_type_laser_x_encode(TEAM_ID_LASER_X_BLUE, &refresh_count, &data, &len);
+        if (ret) {
+            LOG_ERR("rad_msg_type_laser_x_encode failed: %d", ret);
+        } else {
+            ret = rad_tx_blast(tx_dev, refresh_count, data, len);
+            if (ret) {
+                LOG_ERR("rad_tx_blast failed: %d", ret);
+            }
+        }
+    	k_sleep(K_MSEC(500));
     }
 }

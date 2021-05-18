@@ -177,6 +177,12 @@ rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,
 #define RAD_MSG_LINE_CLEAR_LEN_US RAD_MSG_TYPE_LASER_X_MSG_LINE_CLEAR_LEN_US
 #endif
 #endif /* CONFIG_RAD_RX_ACCEPT_LASER_X */
+#if CONFIG_RAD_TX_LASER_X
+int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
+                   	            uint32_t         *refresh_count,
+                   	            const uint16_t  **buf,
+                   	            uint32_t         *len);
+#endif /* CONFIG_RAD_TX_LASER_X */
 #endif /* CONFIG_RAD_MSG_TYPE_LASER_X */
 
 #if CONFIG_RAD_TX

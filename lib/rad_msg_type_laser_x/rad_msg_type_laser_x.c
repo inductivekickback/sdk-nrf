@@ -7,10 +7,38 @@
 #include <sys/util.h>
 #include <logging/log.h>
 
-#include <rad.h>
+#include <nrfx_pwm.h>
+
+#include <drivers/rad_tx.h>
+
+#define REFRESH_COUNT_28US    0
+
+#define SPACE RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0, \
+              RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0, \
+              RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0, \
+              RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0
+
+#define MARK_0 RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
+               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
+               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
+               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
+               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
+               RAD_TX_DUTY_CYCLE_50
+
+#define MARK_1 MARK_0,MARK_0,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
+               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
+               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
+               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50
+
+#define PRE    MARK_1,MARK_1,MARK_1,MARK_1,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50
+#define BIT_0  SPACE,MARK_0
+#define BIT_1  SPACE,MARK_1
+#define PREFIX PRE,BIT_0,BIT_1,BIT_0,BIT_1,BIT_0,BIT_0
+#define END    RAD_TX_DUTY_CYCLE_0
 
 LOG_MODULE_REGISTER(rad_message_type_laser_x, CONFIG_RAD_MSG_TYPE_LASER_X_LOG_LEVEL);
 
+#if CONFIG_RAD_RX_ACCEPT_LASER_X
 rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,
                                              uint32_t           len,
                                              rad_msg_laser_x_t *msg)
@@ -50,3 +78,39 @@ rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,
         return RAD_PARSE_STATE_VALID;
     }
 }
+#endif /* CONFIG_RAD_RX_ACCEPT_LASER_X */
+
+#if CONFIG_RAD_TX_LASER_X
+/*
+ * NOTE: These values must be in RAM due to EasyDMA limitations.
+ */
+static uint16_t BLUE[]    = {PREFIX,BIT_0,BIT_1,END};
+static uint16_t RED[]     = {PREFIX,BIT_1,BIT_0,END};
+static uint16_t NEUTRAL[] = {PREFIX,BIT_1,BIT_1,END};
+
+int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
+                               uint32_t          *refresh_count,
+                               const uint16_t   **buf,
+                               uint32_t          *len)
+{
+    switch (team_id) {
+    case TEAM_ID_LASER_X_RED:
+        *buf = &RED[0];
+        *len = NRF_PWM_VALUES_LENGTH(RED);
+        break;
+    case TEAM_ID_LASER_X_BLUE:
+        *buf = &BLUE[0];
+        *len = NRF_PWM_VALUES_LENGTH(BLUE);
+        break;
+    case TEAM_ID_LASER_X_NEUTRAL:
+        *buf = &NEUTRAL[0];
+        *len = NRF_PWM_VALUES_LENGTH(NEUTRAL);
+        break;
+    default:
+        return -1;
+    }
+    *refresh_count = REFRESH_COUNT_28US;
+    return 0;
+}
+
+#endif /* RAD_TX_LASER_X */

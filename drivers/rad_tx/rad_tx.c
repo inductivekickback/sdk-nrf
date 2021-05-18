@@ -10,24 +10,185 @@
 #include <device.h>
 #include <drivers/rad_tx.h>
 #include <devicetree.h>
+#include <irq.h>
 
+#include <nrfx_pwm.h>
 #include <hal/nrf_gpio.h>
 #include <logging/log.h>
 
+#include <drivers/rad_rx.h>
+
 LOG_MODULE_REGISTER(rad_tx, CONFIG_RAD_TX_LOG_LEVEL);
 
+typedef struct
+{
+    void (*isr_p)(void);
+    unsigned int             irq_p;
+    unsigned int             priority_p;
+    nrfx_pwm_t               pwm_instance;
+    nrf_pwm_values_common_t  pwm_value;
+    bool                     ready;
+} pwm_periph_t;
+
+static pwm_periph_t m_avail_pwms[] = {
+#if CONFIG_RAD_TX_ALLOW_PWM0
+    {
+        .pwm_instance = NRFX_PWM_INSTANCE(0),
+        .irq_p        = DT_IRQN(DT_NODELABEL(pwm0)),
+        .isr_p        = nrfx_pwm_0_irq_handler,
+        .priority_p   = DT_IRQ(DT_NODELABEL(pwm0), priority),
+        .ready        = false,
+    },
+#endif
+#if CONFIG_RAD_TX_ALLOW_PWM1
+    {
+        .pwm_instance = NRFX_PWM_INSTANCE(1),
+        .irq_p        = DT_IRQN(DT_NODELABEL(pwm1)),
+        .isr_p        = nrfx_pwm_1_irq_handler,
+        .priority_p   = DT_IRQ(DT_NODELABEL(pwm1), priority),
+        .ready        = false,
+    },
+#endif
+#if CONFIG_RAD_TX_ALLOW_PWM2
+    {
+        .pwm_instance = NRFX_PWM_INSTANCE(2),
+        .irq_p        = DT_IRQN(DT_NODELABEL(pwm2)),
+        .isr_p        = nrfx_pwm_2_irq_handler,
+        .priority_p   = DT_IRQ(DT_NODELABEL(pwm2), priority),
+        .ready        = false,
+    },
+#endif
+#if CONFIG_RAD_TX_ALLOW_PWM3
+    {
+        .pwm_instance = NRFX_PWM_INSTANCE(3),
+        .irq_p        = DT_IRQN(DT_NODELABEL(pwm3)),
+        .isr_p        = nrfx_pwm_3_irq_handler,
+        .priority_p   = DT_IRQ(DT_NODELABEL(pwm3), priority),
+        .ready        = false,
+    },
+#endif
+};
+
+#define NUM_AVAIL_PWMS (sizeof(m_avail_pwms)/sizeof(pwm_periph_t))
+
 struct rad_tx_data {
-	bool ready;
+    struct k_sem   sem;
+	bool           ready;
 };
 
 struct rad_tx_cfg {
-    const char * const port;
-    const uint8_t      pin;
+    const uint32_t pin;
+    const uint8_t  pwm_index;
 };
+
+static void pwm_handler(nrfx_pwm_evt_type_t event_type, void *p_context)
+{
+    struct rad_tx_data *p_data = (struct rad_tx_data*)p_context;
+
+    switch (event_type) {
+    case NRFX_PWM_EVT_STOPPED:
+        k_sem_give(&p_data->sem);
+        break;
+    default:
+        break;
+    }
+}
+
+static void tx(nrfx_pwm_t *pwm_inst, uint32_t refresh_count, const uint16_t *data, uint32_t len)
+{
+    static nrf_pwm_sequence_t seq = {
+        .values.p_common = NULL,
+        .length          = 0,
+        .repeats         = 0,
+        .end_delay       = 0
+    };
+
+    seq.repeats         = refresh_count;
+    seq.values.p_common = data;
+    seq.length          = len;
+
+    nrfx_pwm_simple_playback(pwm_inst,
+                             &seq,
+                             1,
+                             NRFX_PWM_FLAG_STOP);
+}
+
+static int dmv_rad_tx_blast(const struct device *dev,
+                                uint32_t refresh_count,
+                                const uint16_t *data,
+                                uint32_t len)
+{
+    const struct rad_tx_cfg *p_cfg  = dev->config;
+    struct rad_tx_data      *p_data = dev->data;
+
+    if (unlikely(!p_data->ready)) {
+        LOG_ERR("Driver is not initialized");
+        return -EBUSY;
+    }
+    
+    int err = k_sem_take(&p_data->sem, K_FOREVER);
+    if (0 != err) {
+        return err;
+    }
+
+    tx(&m_avail_pwms[p_cfg->pwm_index].pwm_instance, refresh_count, data, len);
+    return 0;
+}
 
 static int dmv_rad_tx_init(const struct device *dev)
 {
-    int err;
+    nrfx_pwm_t *p_inst;
+
+    const struct rad_tx_cfg *p_cfg  = dev->config;
+    struct rad_tx_data      *p_data = dev->data;
+
+    if (unlikely(p_data->ready)) {
+        /* Already initialized */
+        return 0;
+    }
+
+    if (NUM_AVAIL_PWMS <= p_cfg->pwm_index) {
+        goto ERR_EXIT;
+    }
+
+    if (0 != k_sem_init(&p_data->sem, 1, 1)) {
+        goto ERR_EXIT;
+    }
+
+    p_inst = &m_avail_pwms[p_cfg->pwm_index].pwm_instance;
+
+    if (!m_avail_pwms[p_cfg->pwm_index].ready) {
+        nrfx_pwm_config_t config = NRFX_PWM_DEFAULT_CONFIG(p_cfg->pin,
+                                                           NRFX_PWM_PIN_NOT_USED,
+                                                           NRFX_PWM_PIN_NOT_USED,
+                                                           NRFX_PWM_PIN_NOT_USED);
+        config.base_clock = NRF_PWM_CLK_16MHz;
+        config.top_value  = RAD_TX_TICKS_PER_PERIOD;
+        config.load_mode  = NRF_PWM_LOAD_COMMON;
+
+        /* NOTE: irq_connect_dynamic returns a vector index instead of an error code. */
+        irq_connect_dynamic(m_avail_pwms[p_cfg->pwm_index].irq_p,
+                                  m_avail_pwms[p_cfg->pwm_index].priority_p,
+                                  nrfx_isr,
+                                  m_avail_pwms[p_cfg->pwm_index].isr_p,
+                                  0);
+
+        nrfx_err_t err = nrfx_pwm_init(&m_avail_pwms[p_cfg->pwm_index].pwm_instance,
+                                       &config,
+                                       pwm_handler,
+                                       p_data);
+        if (NRFX_SUCCESS != err) {
+            goto ERR_EXIT;
+        }
+
+        m_avail_pwms[p_cfg->pwm_index].ready = true;
+    }
+
+    nrf_gpio_pin_clear(p_cfg->pin);
+    nrf_gpio_cfg_output(p_cfg->pin);
+    m_avail_pwms[p_cfg->pwm_index].pwm_instance.p_registers->PSEL.OUT[0] = p_cfg->pin;
+
+    p_data->ready = true;
     return 0;
 
 ERR_EXIT:
@@ -36,14 +197,15 @@ ERR_EXIT:
 
 static const struct rad_tx_driver_api rad_tx_driver_api = {
     .init  = dmv_rad_tx_init,
+    .blast = dmv_rad_tx_blast,
 };
 
 #define INST(num) DT_INST(num, dmv_rad_tx)
 
 #define RAD_TX_DEVICE(n) \
     static const struct rad_tx_cfg rad_tx_cfg_##n = { \
-        .port  = DT_GPIO_LABEL(INST(n), gpios), \
-        .pin   = DT_GPIO_PIN(INST(n),   gpios), \
+        .pin       = DT_GPIO_PIN(INST(n),   gpios), \
+        .pwm_index = (n) \
     }; \
     static struct rad_tx_data rad_tx_data_##n; \
     DEVICE_DEFINE(rad_tx_##n, \
