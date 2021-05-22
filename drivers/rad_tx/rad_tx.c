@@ -113,20 +113,6 @@ static void tx(nrfx_pwm_t *pwm_inst, const nrf_pwm_values_common_t *values, uint
                              NRFX_PWM_FLAG_STOP);
 }
 
-static int dmv_rad_tx_blast(struct k_sem                      *sem,
-                                uint32_t                       pwm_index,
-                                const nrf_pwm_values_common_t *values,
-                                uint32_t                       len)
-{
-    int err = k_sem_take(sem, K_FOREVER);
-    if (0 != err) {
-        return err;
-    }
-
-    tx(&m_avail_pwms[pwm_index].pwm_instance, values, len);
-    return 0;
-}
-
 #if CONFIG_RAD_TX_LASER_X
 static int dmv_rad_tx_laser_x_blast(const struct device *dev, team_id_laser_x_t team_id)
 {
@@ -138,18 +124,21 @@ static int dmv_rad_tx_laser_x_blast(const struct device *dev, team_id_laser_x_t 
         return -EBUSY;
     }
 
+    int err = k_sem_take(&p_data->sem, K_FOREVER);
+    if (0 != err) {
+        return err;
+    }
+
     p_data->len = RAD_TX_MSG_MAX_LEN_PWM_VALUES;
 
-    int err = rad_msg_type_laser_x_encode(team_id,
-                                            p_data->values,
-                                            &p_data->len);
+    err = rad_msg_type_laser_x_encode(team_id,
+                                        p_data->values,
+                                        &p_data->len);
     if (err) {
         return err;
     }
-    return dmv_rad_tx_blast(&p_data->sem,
-                              p_cfg->pwm_index,
-                              p_data->values,
-                              p_data->len);
+    tx(&m_avail_pwms[p_cfg->pwm_index].pwm_instance, p_data->values, p_data->len);
+    return 0;
 }
 #endif
 

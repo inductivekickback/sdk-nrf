@@ -90,7 +90,6 @@ int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
         return -ENOMEM;
     }
 
-    *len = 0;
     for (int i=0; i < RAD_TX_MSG_TYPE_LASER_X_START_PULSE_PWM_VALUES; i++) {
         *p_values = RAD_TX_DUTY_CYCLE_50;
         p_values++;
