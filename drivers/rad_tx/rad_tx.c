@@ -12,7 +12,6 @@
 #include <devicetree.h>
 #include <irq.h>
 
-#include <nrfx_pwm.h>
 #include <hal/nrf_gpio.h>
 #include <logging/log.h>
 
@@ -26,7 +25,6 @@ typedef struct
     unsigned int             irq_p;
     unsigned int             priority_p;
     nrfx_pwm_t               pwm_instance;
-    nrf_pwm_values_common_t  pwm_value;
     bool                     ready;
 } pwm_periph_t;
 
@@ -72,8 +70,10 @@ static pwm_periph_t m_avail_pwms[] = {
 #define NUM_AVAIL_PWMS (sizeof(m_avail_pwms)/sizeof(pwm_periph_t))
 
 struct rad_tx_data {
-    struct k_sem   sem;
-	bool           ready;
+    struct k_sem            sem;
+    nrf_pwm_values_common_t values[RAD_TX_MSG_MAX_LEN_PWM_VALUES];
+    uint32_t                len;
+	bool                    ready;
 };
 
 struct rad_tx_cfg {
@@ -94,17 +94,17 @@ static void pwm_handler(nrfx_pwm_evt_type_t event_type, void *p_context)
     }
 }
 
-static void tx(nrfx_pwm_t *pwm_inst, uint32_t refresh_count, const uint16_t *data, uint32_t len)
+static void tx(nrfx_pwm_t *pwm_inst, const nrf_pwm_values_common_t *values, uint32_t len)
 {
     static nrf_pwm_sequence_t seq = {
         .values.p_common = NULL,
         .length          = 0,
         .repeats         = 0,
-        .end_delay       = 0
+        .end_delay       = 0,
+        .repeats         = 0
     };
 
-    seq.repeats         = refresh_count;
-    seq.values.p_common = data;
+    seq.values.p_common = values;
     seq.length          = len;
 
     nrfx_pwm_simple_playback(pwm_inst,
@@ -113,10 +113,22 @@ static void tx(nrfx_pwm_t *pwm_inst, uint32_t refresh_count, const uint16_t *dat
                              NRFX_PWM_FLAG_STOP);
 }
 
-static int dmv_rad_tx_blast(const struct device *dev,
-                                uint32_t refresh_count,
-                                const uint16_t *data,
-                                uint32_t len)
+static int dmv_rad_tx_blast(struct k_sem                      *sem,
+                                uint32_t                       pwm_index,
+                                const nrf_pwm_values_common_t *values,
+                                uint32_t                       len)
+{
+    int err = k_sem_take(sem, K_FOREVER);
+    if (0 != err) {
+        return err;
+    }
+
+    tx(&m_avail_pwms[pwm_index].pwm_instance, values, len);
+    return 0;
+}
+
+#if CONFIG_RAD_TX_LASER_X
+static int dmv_rad_tx_laser_x_blast(const struct device *dev, team_id_laser_x_t team_id)
 {
     const struct rad_tx_cfg *p_cfg  = dev->config;
     struct rad_tx_data      *p_data = dev->data;
@@ -125,15 +137,21 @@ static int dmv_rad_tx_blast(const struct device *dev,
         LOG_ERR("Driver is not initialized");
         return -EBUSY;
     }
-    
-    int err = k_sem_take(&p_data->sem, K_FOREVER);
-    if (0 != err) {
+
+    p_data->len = RAD_TX_MSG_MAX_LEN_PWM_VALUES;
+
+    int err = rad_msg_type_laser_x_encode(team_id,
+                                            p_data->values,
+                                            &p_data->len);
+    if (err) {
         return err;
     }
-
-    tx(&m_avail_pwms[p_cfg->pwm_index].pwm_instance, refresh_count, data, len);
-    return 0;
+    return dmv_rad_tx_blast(&p_data->sem,
+                              p_cfg->pwm_index,
+                              p_data->values,
+                              p_data->len);
 }
+#endif
 
 static int dmv_rad_tx_init(const struct device *dev)
 {
@@ -188,6 +206,7 @@ static int dmv_rad_tx_init(const struct device *dev)
     nrf_gpio_cfg_output(p_cfg->pin);
     m_avail_pwms[p_cfg->pwm_index].pwm_instance.p_registers->PSEL.OUT[0] = p_cfg->pin;
 
+    p_data->len   = 0;
     p_data->ready = true;
     return 0;
 
@@ -196,8 +215,10 @@ ERR_EXIT:
 }
 
 static const struct rad_tx_driver_api rad_tx_driver_api = {
-    .init  = dmv_rad_tx_init,
-    .blast = dmv_rad_tx_blast,
+    .init          = dmv_rad_tx_init,
+#if CONFIG_RAD_TX_LASER_X
+    .laser_x_blast = dmv_rad_tx_laser_x_blast,
+#endif
 };
 
 #define INST(num) DT_INST(num, dmv_rad_tx)

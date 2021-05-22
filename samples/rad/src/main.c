@@ -89,18 +89,9 @@ void main(void)
     LOG_INF("TX dev is %p, name is %s", tx_dev, tx_dev->name);
 
     while (1) {
-        uint32_t        refresh_count;
-        const uint16_t *data;
-        uint32_t        len;
-
-        ret = rad_msg_type_laser_x_encode(TEAM_ID_LASER_X_BLUE, &refresh_count, &data, &len);
+        ret = rad_tx_laser_x_blast(tx_dev, TEAM_ID_LASER_X_RED);
         if (ret) {
-            LOG_ERR("rad_msg_type_laser_x_encode failed: %d", ret);
-        } else {
-            ret = rad_tx_blast(tx_dev, refresh_count, data, len);
-            if (ret) {
-                LOG_ERR("rad_tx_blast failed: %d", ret);
-            }
+            LOG_ERR("rad_tx_laser_x_blast failed: %d", ret);
         }
     	k_sleep(K_MSEC(500));
     }

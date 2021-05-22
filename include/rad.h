@@ -19,6 +19,46 @@ extern "C" {
 #include <zephyr.h>
 #include <device.h>
 
+/**
+ * A *_LEN_PULSES is the number of elapsed-time measurements required to describe a message,
+ * including the start pulse.
+ *
+ * A *_START_PULSE_LEN_US is the expected length of the start pulse.
+ *
+ * A *_LINE_CLEAR_LEN_US is the expected amount of time that needs to elapse after the final
+ * active pulse in order to decide that the message is finished.
+ */
+#define RAD_MSG_TYPE_RAD_LEN_PULSES             33
+#define RAD_MSG_TYPE_RAD_LEN_IR_BITS            16
+#define RAD_MSG_TYPE_RAD_START_PULSE_LEN_US     1580
+#define RAD_MSG_TYPE_RAD_LINE_CLEAR_LEN_US      860
+#define RAD_MSG_TYPE_RAD_0_PULSE_LEN_US         390
+#define RAD_MSG_TYPE_RAD_1_PULSE_LEN_US         780
+#define RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_US    390
+#define RAD_MSG_TYPE_RAD_0_BIT_LEN_US           (RAD_MSG_TYPE_RAD_0_PULSE_LEN_US + \
+	                                               RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_US)
+#define RAD_MSG_TYPE_RAD_1_BIT_LEN_US           (RAD_MSG_TYPE_RAD_1_PULSE_LEN_US + \
+                                                   RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_US)
+
+#define RAD_MSG_TYPE_DYNASTY_LEN_PULSES         41
+#define RAD_MSG_TYPE_DYNASTY_LEN_IR_BITS        40
+#define RAD_MSG_TYPE_DYNASTY_START_PULSE_LEN_US 1660
+#define RAD_MSG_TYPE_DYNASTY_LINE_CLEAR_LEN_US  900
+#define RAD_MSG_TYPE_DYNASTY_0_PULSE_LEN_US     412
+#define RAD_MSG_TYPE_DYNASTY_1_PULSE_LEN_US     747
+
+#define RAD_MSG_TYPE_LASER_X_LEN_PULSES         17
+#define RAD_MSG_TYPE_LASER_X_LEN_IR_BITS		8
+#define RAD_MSG_TYPE_LASER_X_START_PULSE_LEN_US 5950
+#define RAD_MSG_TYPE_LASER_X_LINE_CLEAR_LEN_US  600
+#define RAD_MSG_TYPE_LASER_X_SPACE_PULSE_LEN_US 450
+#define RAD_MSG_TYPE_LASER_X_0_PULSE_LEN_US     550
+#define RAD_MSG_TYPE_LASER_X_1_PULSE_LEN_US     1525
+#define RAD_MSG_TYPE_LASER_X_0_BIT_LEN_US       (RAD_MSG_TYPE_LASER_X_SPACE_PULSE_LEN_US + \
+                                                   RAD_MSG_TYPE_LASER_X_0_PULSE_LEN_US)
+#define RAD_MSG_TYPE_LASER_X_1_BIT_LEN_US       (RAD_MSG_TYPE_LASER_X_SPACE_PULSE_LEN_US + \
+                                                   RAD_MSG_TYPE_LASER_X_1_PULSE_LEN_US)
+
 typedef enum
 {
 	RAD_MSG_TYPE_RAD,

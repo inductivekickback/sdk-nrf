@@ -24,37 +24,8 @@ extern "C" {
 #define RAD_RX_MSG_START_PULSE_MARGIN_US 500 /* A valid start pulse can be +/- this much. */
 #define RAD_RX_MSG_BIT_MARGIN_US         125 /* A valid bit pulse can be +/- this much. */
 
-/**
- * A *_MSG_LEN is the number of elapsed-time measurements required to describe a message, including
- * the start pulse.
- *
- * A *_MSG_START_PULSE_LEN_US is the expected length of the start pulse.
- *
- * A *_MSG_LINE_CLEAR_LEN_US is the expected amount of time that needs to elapse after the final
- * active pulse in order to decide that the message is finished.
- */
-#define RAD_RX_MSG_TYPE_RAD_LEN                    37
-#define RAD_RX_MSG_TYPE_RAD_START_PULSE_LEN_US     1580
-#define RAD_RX_MSG_TYPE_RAD_LINE_CLEAR_LEN_US      860
-#define RAD_RX_MSG_TYPE_RAD_0_BIT_LEN_US           390
-#define RAD_RX_MSG_TYPE_RAD_1_BIT_LEN_US           780
-#define RAD_RX_MSG_TYPE_RAD_ACTIVE_BIT_LEN_US      390
-
-#define RAD_RX_MSG_TYPE_DYNASTY_LEN                41
-#define RAD_RX_MSG_TYPE_DYNASTY_START_PULSE_LEN_US 1660
-#define RAD_RX_MSG_TYPE_DYNASTY_LINE_CLEAR_LEN_US  900
-#define RAD_RX_MSG_TYPE_DYNASTY_0_BIT_LEN_US       412
-#define RAD_RX_MSG_TYPE_DYNASTY_1_BIT_LEN_US       747
-
-#define RAD_RX_MSG_TYPE_LASER_X_LEN                17
-#define RAD_RX_MSG_TYPE_LASER_X_START_PULSE_LEN_US 5950
-#define RAD_RX_MSG_TYPE_LASER_X_LINE_CLEAR_LEN_US  600
-#define RAD_RX_MSG_TYPE_LASER_X_SPACE_BIT_LEN_US   450
-#define RAD_RX_MSG_TYPE_LASER_X_0_BIT_LEN_US       550
-#define RAD_RX_MSG_TYPE_LASER_X_1_BIT_LEN_US       1525
-
-#define RAD_RX_MSG_MAX_LEN                         0
-#define RAD_RX_LINE_CLEAR_LEN_US                   0
+#define RAD_RX_MSG_MAX_LEN               0
+#define RAD_RX_LINE_CLEAR_LEN_US         0
 
 typedef enum
 {
@@ -66,26 +37,26 @@ typedef enum
 } rad_parse_state_t;
 
 #if CONFIG_RAD_MSG_TYPE_RAD
-#if RAD_RX_MSG_MAX_LEN < RAD_RX_MSG_TYPE_RAD_LEN
+#if RAD_RX_MSG_MAX_LEN < RAD_MSG_TYPE_RAD_LEN_PULSES
 #undef RAD_RX_MSG_MAX_LEN
-#define RAD_RX_MSG_MAX_LEN RAD_RX_MSG_TYPE_RAD_LEN
+#define RAD_RX_MSG_MAX_LEN RAD_MSG_TYPE_RAD_LEN_PULSES
 #endif
 #if CONFIG_RAD_RX_ACCEPT_RAD
 rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
                                          uint32_t       len,
                                          rad_msg_rad_t *msg);
-#if RAD_RX_LINE_CLEAR_LEN_US < RAD_RX_MSG_TYPE_RAD_LINE_CLEAR_LEN_US
+#if RAD_RX_LINE_CLEAR_LEN_US < RAD_MSG_TYPE_RAD_LINE_CLEAR_LEN_US
 #undef RAD_RX_LINE_CLEAR_LEN_US
-#define RAD_RX_LINE_CLEAR_LEN_US RAD_RX_MSG_TYPE_RAD_LINE_CLEAR_LEN_US
+#define RAD_RX_LINE_CLEAR_LEN_US RAD_MSG_TYPE_RAD_LINE_CLEAR_LEN_US
 #endif
 #endif /* CONFIG_RAD_RX_ACCEPT_RAD */
 #endif /* CONFIG_RAD_MSG_TYPE_RAD */
 
 
 #if CONFIG_RAD_MSG_TYPE_DYNASTY
-#if RAD_RX_MSG_MAX_LEN < RAD_RX_MSG_TYPE_DYNASTY_LEN
+#if RAD_RX_MSG_MAX_LEN < RAD_MSG_TYPE_DYNASTY_LEN_PULSES
 #undef RAD_RX_MSG_MAX_LEN
-#define RAD_RX_MSG_MAX_LEN RAD_RX_MSG_TYPE_DYNASTY_LEN
+#define RAD_RX_MSG_MAX_LEN RAD_MSG_TYPE_DYNASTY_LEN_PULSES
 #endif
 #if CONFIG_RAD_RX_ACCEPT_DYNASTY
 rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
@@ -99,9 +70,9 @@ rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
 #endif /* CONFIG_RAD_MSG_TYPE_DYNASTY */
 
 #if CONFIG_RAD_MSG_TYPE_LASER_X
-#if RAD_RX_MSG_MAX_LEN < RAD_RX_MSG_TYPE_LASER_X_LEN
+#if RAD_RX_MSG_MAX_LEN < RAD_MSG_TYPE_LASER_X_LEN_PULSES
 #undef RAD_RX_MSG_MAX_LEN
-#define RAD_RX_MAX_LEN RAD_RX_MSG_TYPE_LASER_X_LEN
+#define RAD_RX_MAX_LEN RAD_MSG_TYPE_LASER_X_LEN_PULSES
 #endif
 #if CONFIG_RAD_RX_ACCEPT_LASER_X
 rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,

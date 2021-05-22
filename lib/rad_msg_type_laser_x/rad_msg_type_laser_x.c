@@ -7,35 +7,8 @@
 #include <sys/util.h>
 #include <logging/log.h>
 
-#include <nrfx_pwm.h>
-
 #include <drivers/rad_rx.h>
 #include <drivers/rad_tx.h>
-
-#define REFRESH_COUNT_28US 0
-
-#define SPACE RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0, \
-              RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0, \
-              RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0, \
-              RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0,RAD_TX_DUTY_CYCLE_0
-
-#define MARK_0 RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
-               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
-               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
-               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
-               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
-               RAD_TX_DUTY_CYCLE_50
-
-#define MARK_1 MARK_0,MARK_0,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
-               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
-               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50, \
-               RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50
-
-#define PRE    MARK_1,MARK_1,MARK_1,MARK_1,RAD_TX_DUTY_CYCLE_50,RAD_TX_DUTY_CYCLE_50
-#define BIT_0  SPACE,MARK_0
-#define BIT_1  SPACE,MARK_1
-#define PREFIX PRE,BIT_0,BIT_1,BIT_0,BIT_1,BIT_0,BIT_0
-#define END    RAD_TX_DUTY_CYCLE_0
 
 LOG_MODULE_REGISTER(rad_message_type_laser_x, CONFIG_RAD_MSG_TYPE_LASER_X_LOG_LEVEL);
 
@@ -57,11 +30,11 @@ rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,
      */
     msg->team_id = 0;
     for (int i=1,j=7; j>=0; i+=2,j--) {
-        if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_LASER_X_SPACE_BIT_LEN_US)) {
-            if (IS_VALID_BIT_PULSE(message[i+1], RAD_RX_MSG_TYPE_LASER_X_0_BIT_LEN_US)) {
+        if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_LASER_X_SPACE_PULSE_LEN_US)) {
+            if (IS_VALID_BIT_PULSE(message[i+1], RAD_MSG_TYPE_LASER_X_0_PULSE_LEN_US)) {
                 // This is a zero bit.
                 continue;
-            } else if (IS_VALID_BIT_PULSE(message[i+1], RAD_RX_MSG_TYPE_LASER_X_1_BIT_LEN_US)) {
+            } else if (IS_VALID_BIT_PULSE(message[i+1], RAD_MSG_TYPE_LASER_X_1_PULSE_LEN_US)) {
                 // This is a one bit.
                 msg->team_id |= (1<<j);
                 continue;
@@ -82,36 +55,77 @@ rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,
 #endif /* CONFIG_RAD_RX_ACCEPT_LASER_X */
 
 #if CONFIG_RAD_TX_LASER_X
-/*
- * NOTE: These values must be in RAM due to EasyDMA limitations.
- */
-static uint16_t BLUE[]    = {PREFIX,BIT_0,BIT_1,END};
-static uint16_t RED[]     = {PREFIX,BIT_1,BIT_0,END};
-static uint16_t NEUTRAL[] = {PREFIX,BIT_1,BIT_1,END};
+
+#define ADD_0_BIT(p_values) do { \
+for (int i=0; i < RAD_TX_MSG_TYPE_LASER_X_SPACE_PULSE_PWM_VALUES; i++) \
+{ \
+    *p_values = RAD_TX_DUTY_CYCLE_0; \
+    p_values++; \
+} \
+for (int i=0; i < RAD_TX_MSG_TYPE_LASER_X_0_PULSE_LEN_PWM_VALUES; i++) { \
+    *p_values = RAD_TX_DUTY_CYCLE_50; \
+    p_values++; \
+} \
+} while (0)
+
+#define ADD_1_BIT(p_values) do { \
+for (int i=0; i < RAD_TX_MSG_TYPE_LASER_X_SPACE_PULSE_PWM_VALUES; i++) \
+{ \
+    *p_values = RAD_TX_DUTY_CYCLE_0; \
+    p_values++; \
+} \
+for (int i=0; i < RAD_TX_MSG_TYPE_LASER_X_1_PULSE_LEN_PWM_VALUES; i++) { \
+    *p_values = RAD_TX_DUTY_CYCLE_50; \
+    p_values++; \
+} \
+} while (0)
 
 int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
-                               uint32_t          *refresh_count,
-                               const uint16_t   **buf,
-                               uint32_t          *len)
+                                  nrf_pwm_values_common_t *values,
+                                  uint32_t *len)
 {
+    nrf_pwm_values_common_t *p_values = values;
+
+    if (*len < RAD_TX_MSG_TYPE_LASER_X_MAX_MSG_LEN_PWM_VALUES) {
+        return -ENOMEM;
+    }
+
+    *len = 0;
+    for (int i=0; i < RAD_TX_MSG_TYPE_LASER_X_START_PULSE_PWM_VALUES; i++) {
+        *p_values = RAD_TX_DUTY_CYCLE_50;
+        p_values++;
+    }
+
+    // Add the common prefix.
+    ADD_0_BIT(p_values);
+    ADD_1_BIT(p_values);
+    ADD_0_BIT(p_values);
+    ADD_1_BIT(p_values);
+    ADD_0_BIT(p_values);
+    ADD_0_BIT(p_values);
+
     switch (team_id) {
     case TEAM_ID_LASER_X_RED:
-        *buf = &RED[0];
-        *len = NRF_PWM_VALUES_LENGTH(RED);
+        ADD_1_BIT(p_values);
+        ADD_0_BIT(p_values);
         break;
     case TEAM_ID_LASER_X_BLUE:
-        *buf = &BLUE[0];
-        *len = NRF_PWM_VALUES_LENGTH(BLUE);
+        ADD_0_BIT(p_values);
+        ADD_1_BIT(p_values);
         break;
     case TEAM_ID_LASER_X_NEUTRAL:
-        *buf = &NEUTRAL[0];
-        *len = NRF_PWM_VALUES_LENGTH(NEUTRAL);
+        ADD_1_BIT(p_values);
+        ADD_1_BIT(p_values);
         break;
     default:
         return -1;
     }
-    *refresh_count = REFRESH_COUNT_28US;
+
+    *p_values = RAD_TX_DUTY_CYCLE_0;
+    p_values++;
+
+    *len = (p_values - values);
     return 0;
 }
 
-#endif /* RAD_TX_LASER_X */
+#endif /* CONFIG_RAD_TX_LASER_X */

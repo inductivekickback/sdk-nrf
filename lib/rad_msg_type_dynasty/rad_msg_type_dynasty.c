@@ -42,7 +42,7 @@ rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
     uint16_t preamble=0;
 
     for (int j=15; j>=0; i++,j--) {
-        if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_DYNASTY_1_BIT_LEN_US)) {
+        if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_DYNASTY_1_PULSE_LEN_US)) {
             // This is a one bit.
             preamble |= (1<<j);
         }
@@ -54,7 +54,7 @@ rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
 
     msg->team_id = 0;
     for (int j=7; j>=0; i++,j--) {
-		if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_DYNASTY_1_BIT_LEN_US)) {
+		if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_DYNASTY_1_PULSE_LEN_US)) {
             // This is a one bit.
             msg->team_id |= (1<<j);
         }
@@ -72,7 +72,7 @@ rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
 
     msg->weapon_id = 0;
     for (int j=7; j>=0; i++,j--) {
-        if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_DYNASTY_1_BIT_LEN_US)) {
+        if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_DYNASTY_1_PULSE_LEN_US)) {
             // This is a one bit.
             msg->weapon_id |= (1<<j);
         }
@@ -80,7 +80,7 @@ rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
 
     msg->checksum = 0;
     for (int j=7; j>=0; i++,j--) {
-        if (IS_VALID_BIT_PULSE(message[i], RAD_RX_MSG_TYPE_DYNASTY_1_BIT_LEN_US)) {
+        if (IS_VALID_BIT_PULSE(message[i], RAD_MSG_TYPE_DYNASTY_1_PULSE_LEN_US)) {
             // This is a one bit.
             msg->checksum |= (1<<j);
         }
