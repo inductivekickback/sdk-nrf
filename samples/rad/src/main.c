@@ -113,5 +113,18 @@ void main(void)
             LOG_ERR("rad_tx_laser_x_blast failed: %d", ret);
         }
         k_sleep(K_MSEC(100));
+
+        rad_msg_rad_t rad_msg = {
+            .damage    = 0,
+            .special   = 9,
+            .player_id = 4,
+            .team_id   = 3,
+            .reserved  = 0
+        };
+        ret = rad_tx_rad_blast(tx_dev, &rad_msg);
+        if (ret) {
+            LOG_ERR("rad_tx_rad_blast failed: %d", ret);
+        }
+        k_sleep(K_MSEC(100));
     }
 }

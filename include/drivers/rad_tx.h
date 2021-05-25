@@ -31,7 +31,7 @@ extern "C" {
 #define RAD_TX_DUTY_CYCLE_50        (RAD_TX_TICKS_PER_PERIOD / 2)
 #define RAD_TX_PWM_VALUE_LEN_US     26
 
-#define RAD_TX_MSG_TYPE_RAD_START_PULSE_LEN_PWM_VALUES (RAD_MSG_TYPE_RAD_START_PULSE_LEN_US / \
+#define RAD_TX_MSG_TYPE_RAD_START_PULSE_PWM_VALUES     (RAD_MSG_TYPE_RAD_START_PULSE_LEN_US / \
                                                          RAD_TX_PWM_VALUE_LEN_US)
 #define RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_PWM_VALUES   (RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_US / \
                                                          RAD_TX_PWM_VALUE_LEN_US)
@@ -45,7 +45,7 @@ extern "C" {
                                                          RAD_TX_PWM_VALUE_LEN_US)
 #define RAD_TX_MSG_TYPE_RAD_MAX_BIT_LEN_PWM_VALUES     MAX(RAD_TX_MSG_TYPE_RAD_0_BIT_LEN_PWM_VALUES, \
                                                          RAD_TX_MSG_TYPE_RAD_1_BIT_LEN_PWM_VALUES)
-#define RAD_TX_MSG_TYPE_RAD_MAX_MSG_LEN_PWM_VALUES     (RAD_TX_MSG_TYPE_RAD_START_PULSE_LEN_PWM_VALUES + \
+#define RAD_TX_MSG_TYPE_RAD_MAX_MSG_LEN_PWM_VALUES     (RAD_TX_MSG_TYPE_RAD_START_PULSE_PWM_VALUES + \
                                                          (RAD_TX_MSG_TYPE_RAD_MAX_BIT_LEN_PWM_VALUES * \
                                                          RAD_MSG_TYPE_RAD_LEN_IR_BITS) + 1)
 
@@ -120,6 +120,10 @@ int rad_msg_type_laser_x_encode(rad_msg_laser_x_t *msg,
 typedef int (*rad_tx_init_t)        (const struct device *dev);
 typedef int (*rad_tx_blast_again_t) (const struct device *dev); /* Repeat the last blast. */
 
+#if CONFIG_RAD_TX_RAD
+typedef int (*rad_tx_rad_blast_t) (const struct device *dev, rad_msg_rad_t *msg);
+#endif
+
 #if CONFIG_RAD_TX_LASER_X
 typedef int (*rad_tx_laser_x_blast_t) (const struct device *dev, rad_msg_laser_x_t *msg);
 #endif
@@ -134,6 +138,9 @@ typedef int (*rad_tx_dynasty_blast_t) (const struct device *dev, rad_msg_dynasty
 struct rad_tx_driver_api {
     rad_tx_init_t          init;
     rad_tx_blast_again_t   blast_again;
+#if CONFIG_RAD_TX_RAD
+    rad_tx_rad_blast_t     rad_blast;
+#endif
 #if CONFIG_RAD_TX_LASER_X
     rad_tx_laser_x_blast_t laser_x_blast;
 #endif
@@ -173,6 +180,24 @@ static inline int rad_tx_blast_again(const struct device *dev)
     }
     return api->blast_again(dev);
 }
+
+#if CONFIG_RAD_TX_RAD
+static inline int rad_tx_rad_blast(const struct device *dev, rad_msg_rad_t *msg)
+{
+    struct rad_tx_driver_api *api;
+
+    if (dev == NULL) {
+        return -EINVAL;
+    }
+
+    api = (struct rad_tx_driver_api*)dev->api;
+
+    if (api->rad_blast == NULL) {
+        return -ENOTSUP;
+    }
+    return api->rad_blast(dev, msg);
+}
+#endif /* CONFIG_RAD_RAD */
 
 #if CONFIG_RAD_TX_LASER_X
 static inline int rad_tx_laser_x_blast(const struct device *dev, rad_msg_laser_x_t *msg)

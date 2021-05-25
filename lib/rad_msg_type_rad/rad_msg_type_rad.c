@@ -115,6 +115,30 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
 #if CONFIG_RAD_TX_RAD
 #include <drivers/rad_tx.h>
 
+#define ADD_0_BIT(p_values) do { \
+for (int i=0; i < RAD_MSG_TYPE_RAD_0_PULSE_LEN_PWM_VALUES; i++) \
+{ \
+    *p_values = RAD_TX_DUTY_CYCLE_0; \
+    p_values++; \
+} \
+for (int i=0; i < RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_PWM_VALUES; i++) { \
+    *p_values = RAD_TX_DUTY_CYCLE_50; \
+    p_values++; \
+} \
+} while (0)
+
+#define ADD_1_BIT(p_values) do { \
+for (int i=0; i < RAD_MSG_TYPE_RAD_1_PULSE_LEN_PWM_VALUES; i++) \
+{ \
+    *p_values = RAD_TX_DUTY_CYCLE_0; \
+    p_values++; \
+} \
+for (int i=0; i < RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_PWM_VALUES; i++) { \
+    *p_values = RAD_TX_DUTY_CYCLE_50; \
+    p_values++; \
+} \
+} while (0)
+
 int rad_msg_type_rad_encode(rad_msg_rad_t *msg, nrf_pwm_values_common_t *values, uint32_t *len)
 {
     nrf_pwm_values_common_t *p_values = values;
@@ -126,6 +150,46 @@ int rad_msg_type_rad_encode(rad_msg_rad_t *msg, nrf_pwm_values_common_t *values,
     for (int i=0; i < RAD_TX_MSG_TYPE_RAD_START_PULSE_PWM_VALUES; i++) {
         *p_values = RAD_TX_DUTY_CYCLE_50;
         p_values++;
+    }
+
+    for (int j=1; j>=0; j--) {
+        if (msg->reserved & (1<<j)) {
+            ADD_1_BIT(p_values);
+        } else {
+            ADD_0_BIT(p_values);
+        }
+    }
+
+    for (int j=1; j>=0; j--) {
+        if (msg->team_id & (1<<j)) {
+            ADD_1_BIT(p_values);
+        } else {
+            ADD_0_BIT(p_values);
+        }
+    }
+
+    for (int j=3; j>=0; j--) {
+        if (msg->player_id & (1<<j)) {
+            ADD_1_BIT(p_values);
+        } else {
+            ADD_0_BIT(p_values);
+        }
+    }
+
+    for (int j=3; j>=0; j--) {
+        if (msg->special & (1<<j)) {
+            ADD_1_BIT(p_values);
+        } else {
+            ADD_0_BIT(p_values);
+        }
+    }
+
+    for (int j=3; j>=0; j--) {
+        if (msg->damage & (1<<j)) {
+            ADD_1_BIT(p_values);
+        } else {
+            ADD_0_BIT(p_values);
+        }
     }
 
     *p_values = RAD_TX_DUTY_CYCLE_0;

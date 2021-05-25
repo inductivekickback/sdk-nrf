@@ -113,6 +113,33 @@ static void tx(nrfx_pwm_t *pwm_inst, const nrf_pwm_values_common_t *values, uint
                              NRFX_PWM_FLAG_STOP);
 }
 
+#if CONFIG_RAD_TX_RAD
+static int dmv_rad_tx_rad_blast(const struct device *dev, rad_msg_rad_t *msg)
+{
+    const struct rad_tx_cfg *p_cfg  = dev->config;
+    struct rad_tx_data      *p_data = dev->data;
+
+    if (unlikely(!p_data->ready)) {
+        LOG_ERR("Driver is not initialized");
+        return -EBUSY;
+    }
+
+    int err = k_sem_take(&p_data->sem, K_FOREVER);
+    if (0 != err) {
+        return err;
+    }
+
+    p_data->len = RAD_TX_MSG_MAX_LEN_PWM_VALUES;
+
+    err = rad_msg_type_rad_encode(msg, p_data->values, &p_data->len);
+    if (err) {
+        return err;
+    }
+    tx(&m_avail_pwms[p_cfg->pwm_index].pwm_instance, p_data->values, p_data->len);
+    return 0;
+}
+#endif /* CONFIG_RAD_TX_RAD */
+
 #if CONFIG_RAD_TX_LASER_X
 static int dmv_rad_tx_laser_x_blast(const struct device *dev, rad_msg_laser_x_t *msg)
 {
@@ -253,7 +280,10 @@ ERR_EXIT:
 static const struct rad_tx_driver_api rad_tx_driver_api = {
     .init          = dmv_rad_tx_init,
     .blast_again   = dmv_rad_tx_blast_again,
-#if CONFIG_RAD_TX_LASER_X
+#if CONFIG_RAD_TX_RAD
+    .rad_blast = dmv_rad_tx_rad_blast,
+#endif
+#if CONFIG_RAD_TX_RAD
     .laser_x_blast = dmv_rad_tx_laser_x_blast,
 #endif
 #if CONFIG_RAD_TX_DYNASTY
