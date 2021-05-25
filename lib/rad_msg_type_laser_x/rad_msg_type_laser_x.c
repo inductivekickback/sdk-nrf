@@ -60,24 +60,20 @@ rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,
 #define ADD_0_BIT(p_values) do { \
 for (int i=0; i < RAD_TX_MSG_TYPE_LASER_X_SPACE_PULSE_PWM_VALUES; i++) \
 { \
-    *p_values = RAD_TX_DUTY_CYCLE_0; \
-    p_values++; \
+    *p_values++ = RAD_TX_DUTY_CYCLE_0; \
 } \
 for (int i=0; i < RAD_TX_MSG_TYPE_LASER_X_0_PULSE_LEN_PWM_VALUES; i++) { \
-    *p_values = RAD_TX_DUTY_CYCLE_50; \
-    p_values++; \
+    *p_values++ = RAD_TX_DUTY_CYCLE_50; \
 } \
 } while (0)
 
 #define ADD_1_BIT(p_values) do { \
 for (int i=0; i < RAD_TX_MSG_TYPE_LASER_X_SPACE_PULSE_PWM_VALUES; i++) \
 { \
-    *p_values = RAD_TX_DUTY_CYCLE_0; \
-    p_values++; \
+    *p_values++ = RAD_TX_DUTY_CYCLE_0; \
 } \
 for (int i=0; i < RAD_TX_MSG_TYPE_LASER_X_1_PULSE_LEN_PWM_VALUES; i++) { \
-    *p_values = RAD_TX_DUTY_CYCLE_50; \
-    p_values++; \
+    *p_values++ = RAD_TX_DUTY_CYCLE_50; \
 } \
 } while (0)
 

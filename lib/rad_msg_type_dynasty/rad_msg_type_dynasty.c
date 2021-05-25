@@ -137,15 +137,13 @@ rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
 
 #define ADD_0_BIT(p_values, duty_cycle) do { \
 for (int i=0; i < RAD_TX_MSG_TYPE_DYNASTY_0_PULSE_LEN_PWM_VALUES; i++) { \
-    *p_values = duty_cycle; \
-    p_values++; \
+    *p_values++ = duty_cycle; \
 } \
 } while (0)
 
 #define ADD_1_BIT(p_values, duty_cyle) do { \
 for (int i=0; i < RAD_TX_MSG_TYPE_DYNASTY_1_PULSE_LEN_PWM_VALUES; i++) { \
-    *p_values = duty_cyle; \
-    p_values++; \
+    *p_values++ = duty_cyle; \
 } \
 } while (0)
 
