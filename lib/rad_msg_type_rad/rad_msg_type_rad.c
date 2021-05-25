@@ -7,10 +7,13 @@
 #include <sys/util.h>
 #include <logging/log.h>
 
-#include <drivers/rad_rx.h>
 #include <drivers/rad_tx.h>
 
+#if CONFIG_RAD_MSG_TYPE_RAD
 LOG_MODULE_REGISTER(rad_message_type_rad, CONFIG_RAD_MSG_TYPE_RAD_LOG_LEVEL);
+
+#if CONFIG_RAD_RX_ACCEPT_RAD
+#include <drivers/rad_rx.h>
 
 rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
 	                                     uint32_t       len,
@@ -106,3 +109,14 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
 
 	return RAD_PARSE_STATE_VALID;
 }
+
+#endif /* CONFIG_RAD_RX_ACCEPT_RAD */
+
+#if CONFIG_RAD_TX_RAD
+#include <drivers/rad_tx.h>
+
+// TODO: 
+
+#endif /* CONFIG_RAD_TX_RAD */
+
+#endif /* CONFIG_RAD_MSG_TYPE_RAD */

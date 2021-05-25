@@ -79,14 +79,6 @@ extern "C" {
                                                          (RAD_TX_MSG_TYPE_LASER_X_MAX_BIT_LEN_PWM_VALUES * \
                                                          RAD_MSG_TYPE_LASER_X_LEN_IR_BITS) + 1)
 
-#if CONFIG_RAD_MSG_TYPE_LASER_X
-#if CONFIG_RAD_TX_LASER_X
-int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
-                                  nrf_pwm_values_common_t *values,
-                                  uint32_t *len);
-#endif /* CONFIG_RAD_TX_LASER_X */
-#endif /* CONFIG_RAD_MSG_TYPE_LASER_X */
-
 #define RAD_TX_MSG_MAX_LEN_PWM_VALUES 0
 
 #if CONFIG_RAD_TX_RAD
@@ -97,6 +89,10 @@ int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
 #endif /* CONFIG_RAD_TX_RAD */
 
 #if CONFIG_RAD_TX_DYNASTY
+int rad_msg_type_dynasty_encode(team_id_dynasty_t team_id,
+                                  weapon_id_dynasty_t weapon_id,
+                                  nrf_pwm_values_common_t *values,
+                                  uint32_t *len);
 #if RAD_TX_MSG_MAX_LEN_PWM_VALUES < RAD_TX_MSG_TYPE_DYNASTY_MAX_MSG_LEN_PWM_VALUES
 #undef RAD_TX_MSG_MAX_LEN_PWM_VALUES
 #define RAD_TX_MSG_MAX_LEN_PWM_VALUES RAD_TX_MSG_TYPE_DYNASTY_MAX_MSG_LEN_PWM_VALUES
@@ -104,6 +100,9 @@ int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
 #endif /* CONFIG_RAD_TX_DYNASTY */
 
 #if CONFIG_RAD_TX_LASER_X
+int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
+                                  nrf_pwm_values_common_t *values,
+                                  uint32_t *len);
 #if RAD_TX_MSG_MAX_LEN_PWM_VALUES < RAD_TX_MSG_TYPE_LASER_X_MAX_MSG_LEN_PWM_VALUES
 #undef RAD_TX_MSG_MAX_LEN_PWM_VALUES
 #define RAD_TX_MSG_MAX_LEN_PWM_VALUES RAD_TX_MSG_TYPE_LASER_X_MAX_MSG_LEN_PWM_VALUES
@@ -116,10 +115,17 @@ int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
 #endif
 #endif
 
-typedef int (*rad_tx_init_t) (const struct device *dev);
+typedef int (*rad_tx_init_t)        (const struct device *dev);
+typedef int (*rad_tx_blast_again_t) (const struct device *dev); /* Repeat the last blast. */
 
 #if CONFIG_RAD_TX_LASER_X
 typedef int (*rad_tx_laser_x_blast_t) (const struct device *dev, team_id_laser_x_t team_id);
+#endif
+
+#if CONFIG_RAD_TX_DYNASTY
+typedef int (*rad_tx_dynasty_blast_t) (const struct device *dev,
+                                         team_id_dynasty_t team_id,
+                                         weapon_id_dynasty_t weapon_id);
 #endif
 
 /**
@@ -127,8 +133,12 @@ typedef int (*rad_tx_laser_x_blast_t) (const struct device *dev, team_id_laser_x
  */
 struct rad_tx_driver_api {
     rad_tx_init_t          init;
+    rad_tx_blast_again_t   blast_again;
 #if CONFIG_RAD_TX_LASER_X
     rad_tx_laser_x_blast_t laser_x_blast;
+#endif
+#if CONFIG_RAD_TX_DYNASTY
+    rad_tx_dynasty_blast_t dynasty_blast;
 #endif
 };
 
@@ -148,6 +158,23 @@ static inline int rad_tx_init(const struct device *dev)
     return api->init(dev);
 }
 
+static inline int rad_tx_blast_again(const struct device *dev)
+{
+    struct rad_tx_driver_api *api;
+
+    if (dev == NULL) {
+        return -EINVAL;
+    }
+
+    api = (struct rad_tx_driver_api*)dev->api;
+
+    if (api->blast_again == NULL) {
+        return -ENOTSUP;
+    }
+    return api->blast_again(dev);
+}
+
+#if CONFIG_RAD_TX_LASER_X
 static inline int rad_tx_laser_x_blast(const struct device *dev, team_id_laser_x_t team_id)
 {
     struct rad_tx_driver_api *api;
@@ -163,6 +190,27 @@ static inline int rad_tx_laser_x_blast(const struct device *dev, team_id_laser_x
     }
     return api->laser_x_blast(dev, team_id);
 }
+#endif /* CONFIG_RAD_TX_LASER_X */
+
+#if CONFIG_RAD_TX_DYNASTY
+static inline int rad_tx_dynasty_blast(const struct device *dev,
+                                         team_id_dynasty_t team_id,
+                                         weapon_id_dynasty_t weapon_id)
+{
+    struct rad_tx_driver_api *api;
+
+    if (dev == NULL) {
+        return -EINVAL;
+    }
+
+    api = (struct rad_tx_driver_api*)dev->api;
+
+    if (api->dynasty_blast == NULL) {
+        return -ENOTSUP;
+    }
+    return api->dynasty_blast(dev, team_id, weapon_id);
+}
+#endif /* CONFIG_RAD_TX_DYNASTY */
 
 #ifdef __cplusplus
 }

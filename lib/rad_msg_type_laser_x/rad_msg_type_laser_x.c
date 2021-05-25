@@ -7,12 +7,12 @@
 #include <sys/util.h>
 #include <logging/log.h>
 
-#include <drivers/rad_rx.h>
-#include <drivers/rad_tx.h>
-
+#if CONFIG_RAD_MSG_TYPE_DYNASTY
 LOG_MODULE_REGISTER(rad_message_type_laser_x, CONFIG_RAD_MSG_TYPE_LASER_X_LOG_LEVEL);
 
 #if CONFIG_RAD_RX_ACCEPT_LASER_X
+#include <drivers/rad_rx.h>
+
 rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,
                                              uint32_t           len,
                                              rad_msg_laser_x_t *msg)
@@ -55,6 +55,7 @@ rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,
 #endif /* CONFIG_RAD_RX_ACCEPT_LASER_X */
 
 #if CONFIG_RAD_TX_LASER_X
+#include <drivers/rad_tx.h>
 
 #define ADD_0_BIT(p_values) do { \
 for (int i=0; i < RAD_TX_MSG_TYPE_LASER_X_SPACE_PULSE_PWM_VALUES; i++) \
@@ -128,3 +129,5 @@ int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
 }
 
 #endif /* CONFIG_RAD_TX_LASER_X */
+
+#endif /* CONFIG_RAD_MSG_TYPE_DYNASTY */

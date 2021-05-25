@@ -67,6 +67,7 @@ typedef enum
 	RAD_MSG_TYPE_COUNT
 } rad_msg_type_t;
 
+#if CONFIG_RAD_MSG_TYPE_RAD
 typedef struct
 {
 	uint8_t damage		: 4;
@@ -75,7 +76,9 @@ typedef struct
 	uint8_t team_id		: 2;
 	uint8_t reserved	: 2;
 } rad_msg_rad_t;
+#endif /* #if CONFIG_RAD_MSG_TYPE_RAD */
 
+#if CONFIG_RAD_MSG_TYPE_LASER_X
 typedef enum
 {
 	TEAM_ID_LASER_X_BLUE    = 0x51,
@@ -87,7 +90,9 @@ typedef struct
 {
 	uint8_t team_id;
 } rad_msg_laser_x_t;
+#endif /* CONFIG_RAD_MSG_TYPE_LASER_X */
 
+#if CONFIG_RAD_MSG_TYPE_DYNASTY
 typedef enum
 {
 	TEAM_ID_DYNASTY_BLUE  = 1,
@@ -109,6 +114,7 @@ typedef struct
 	uint8_t weapon_id;
 	uint8_t checksum;
 } rad_msg_dynasty_t;
+#endif /* CONFIG_RAD_MSG_TYPE_DYNASTY */
 
 #ifdef __cplusplus
 }

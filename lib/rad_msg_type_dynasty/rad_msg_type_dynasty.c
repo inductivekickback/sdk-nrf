@@ -7,18 +7,55 @@
 #include <sys/util.h>
 #include <logging/log.h>
 
-#include <drivers/rad_rx.h>
-#include <drivers/rad_tx.h>
-
 #define PISTOL_CHECKSUM_ADD	     5
 #define SHOTGUN_CHECKSUM_ADD     6
 #define SHOTGUN_IRR_CHECKSUM_ADD 7
 #define ROCKET_CHECKSUM_ADD      7
 #define ROCKET_IRR_CHECKSUM_ADD  8
 
-#define COMMON_PREAMBLE         170
+#define COMMON_PREAMBLE          170
+#define INVALID_CHECKSUM         0xFF
 
+#if CONFIG_RAD_MSG_TYPE_DYNASTY
 LOG_MODULE_REGISTER(rad_message_type_dynasty, CONFIG_RAD_MSG_TYPE_DYNASTY_LOG_LEVEL);
+
+#if CONFIG_RAD_RX_ACCEPT_DYNASTY
+#include <drivers/rad_rx.h>
+
+static uint8_t checksum_calc(team_id_dynasty_t team_id, weapon_id_dynasty_t weapon_id)
+{
+    switch (weapon_id) {
+    case WEAPON_ID_DYNASTY_PISTOL:
+        return (team_id + PISTOL_CHECKSUM_ADD);
+    case WEAPON_ID_DYNASTY_SHOTGUN_SMG:
+        switch (team_id) {
+        case TEAM_ID_DYNASTY_BLUE:
+        case TEAM_ID_DYNASTY_RED:
+        case TEAM_ID_DYNASTY_GREEN:         
+            return (team_id + SHOTGUN_CHECKSUM_ADD);
+        case TEAM_ID_DYNASTY_WHITE:
+            return (team_id + SHOTGUN_IRR_CHECKSUM_ADD);
+        default:
+            break;
+        }
+        break;
+    case WEAPON_ID_DYNASTY_ROCKET:
+        switch (team_id) {
+        case TEAM_ID_DYNASTY_BLUE:
+        case TEAM_ID_DYNASTY_RED:
+            return (team_id + ROCKET_CHECKSUM_ADD);
+        case TEAM_ID_DYNASTY_GREEN:
+        case TEAM_ID_DYNASTY_WHITE:
+            return (team_id + ROCKET_IRR_CHECKSUM_ADD);
+        default:
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+    return INVALID_CHECKSUM;
+}
 
 rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
 	                                         uint32_t           len,
@@ -86,51 +123,186 @@ rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
         }
     }
 
-    switch (msg->weapon_id) {
-    case WEAPON_ID_DYNASTY_PISTOL:
-    	if (msg->checksum != (msg->team_id + PISTOL_CHECKSUM_ADD)) {
-    		return RAD_PARSE_STATE_INVALID;
-    	}
-    	break;
-    case WEAPON_ID_DYNASTY_SHOTGUN_SMG:
-    	switch (msg->team_id) {
-		case TEAM_ID_DYNASTY_BLUE:
-		case TEAM_ID_DYNASTY_RED:
-		case TEAM_ID_DYNASTY_GREEN:    		
-        	if (msg->checksum != (msg->team_id + SHOTGUN_CHECKSUM_ADD)) {
-    	   		return RAD_PARSE_STATE_INVALID;
-    	   	}
-        	break;
-        case TEAM_ID_DYNASTY_WHITE:
-        	if (msg->checksum != (msg->team_id + SHOTGUN_IRR_CHECKSUM_ADD)) {
-    	   		return RAD_PARSE_STATE_INVALID;
-    	   	}
-        	break;
-        default:
-        	return RAD_PARSE_STATE_INVALID;
-        }
-        break;
-    case WEAPON_ID_DYNASTY_ROCKET:
-    	switch (msg->team_id) {
-    	case TEAM_ID_DYNASTY_BLUE:
-        case TEAM_ID_DYNASTY_RED:
-   	       	if (msg->checksum != (msg->team_id + ROCKET_CHECKSUM_ADD)) {
-    			return RAD_PARSE_STATE_INVALID;
-	    	}
-        	break;
-        case TEAM_ID_DYNASTY_GREEN:
-        case TEAM_ID_DYNASTY_WHITE:
-           	if (msg->checksum != (msg->team_id + ROCKET_IRR_CHECKSUM_ADD)) {
-	    		return RAD_PARSE_STATE_INVALID;
-    		}
-        	break;
-        default:
-        	return RAD_PARSE_STATE_INVALID;
-    	}
-        break;
-    default:
-    	return RAD_PARSE_STATE_INVALID;
+    if (msg->checksum == checksum_calc(msg->team_id, msg->weapon_id)) {
+        return RAD_PARSE_STATE_VALID;
+    } else {
+        return RAD_PARSE_STATE_INVALID;
+    }
+}
+
+#endif /* CONFIG_RAD_RX_ACCEPT_DYNASTY */
+
+#if CONFIG_RAD_TX_DYNASTY
+#include <drivers/rad_tx.h>
+
+#define ADD_0_BIT(p_values, duty_cycle) do { \
+for (int i=0; i < RAD_TX_MSG_TYPE_DYNASTY_0_PULSE_LEN_PWM_VALUES; i++) { \
+    *p_values = duty_cycle; \
+    p_values++; \
+} \
+} while (0)
+
+#define ADD_1_BIT(p_values, duty_cyle) do { \
+for (int i=0; i < RAD_TX_MSG_TYPE_DYNASTY_1_PULSE_LEN_PWM_VALUES; i++) { \
+    *p_values = duty_cyle; \
+    p_values++; \
+} \
+} while (0)
+
+int rad_msg_type_dynasty_encode(team_id_dynasty_t team_id,
+                                  weapon_id_dynasty_t weapon_id,
+                                  nrf_pwm_values_common_t *values,
+                                  uint32_t *len)
+{
+    nrf_pwm_values_common_t *p_values = values;
+
+    if (*len < RAD_TX_MSG_TYPE_DYNASTY_MAX_MSG_LEN_PWM_VALUES) {
+        return -ENOMEM;
     }
 
-    return RAD_PARSE_STATE_VALID;
+    for (int i=0; i < RAD_TX_MSG_TYPE_DYNASTY_START_PULSE_PWM_VALUES; i++) {
+        *p_values = RAD_TX_DUTY_CYCLE_50;
+        p_values++;
+    }
+
+    /* Add the common prefix: 0b0000000010101010 */
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+
+    /* Add the team_id byte. */
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+
+    switch (team_id) {
+    case TEAM_ID_DYNASTY_BLUE:
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+        break;
+    case TEAM_ID_DYNASTY_RED:
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+        break;
+    case TEAM_ID_DYNASTY_GREEN:
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+        break;
+    case TEAM_ID_DYNASTY_WHITE:
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+        break;
+    default:
+        return -1;
+    }
+
+    /* Add the weapon_id byte. */
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+
+    switch (weapon_id) {
+    case WEAPON_ID_DYNASTY_PISTOL:
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+        break;
+    case WEAPON_ID_DYNASTY_SHOTGUN_SMG:
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+        break;
+    case WEAPON_ID_DYNASTY_ROCKET:
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+        break;
+    default:
+        return -1;
+    }
+
+    /* Add the checksum byte. */
+    uint8_t checksum = checksum_calc(team_id, weapon_id);
+
+    if (INVALID_CHECKSUM == checksum) {
+        return -1;
+    }
+
+    if (checksum & (1<<7)) {
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    } else {
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    }
+
+    if (checksum & (1<<6)) {
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    } else {
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    }
+
+    if (checksum & (1<<5)) {
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    } else {
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    }
+
+    if (checksum & (1<<4)) {
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    } else {
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    }
+
+    if (checksum & (1<<3)) {
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    } else {
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    }
+
+    if (checksum & (1<<2)) {
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    } else {
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    }
+
+    if (checksum & (1<<1)) {
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    } else {
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
+    }
+
+    if (checksum & (1<<0)) {
+        ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    } else {
+        ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
+    }
+
+    *p_values = RAD_TX_DUTY_CYCLE_0;
+    p_values++;
+
+    *len = (p_values - values);
+
+    return 0;
 }
+
+#endif /* CONFIG_RAD_TX_DYNASTY */
+
+#endif /* CONFIG_RAD_MSG_TYPE_DYNASTY */

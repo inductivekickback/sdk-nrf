@@ -93,6 +93,18 @@ void main(void)
         if (ret) {
             LOG_ERR("rad_tx_laser_x_blast failed: %d", ret);
         }
-    	k_sleep(K_MSEC(500));
+    	k_sleep(K_MSEC(100));
+
+        ret = rad_tx_blast_again(tx_dev);
+        if (ret) {
+            LOG_ERR("rad_tx_blast again failed: %d", ret);
+        }
+        k_sleep(K_MSEC(100));
+
+        ret = rad_tx_dynasty_blast(tx_dev, TEAM_ID_DYNASTY_RED, WEAPON_ID_DYNASTY_ROCKET);
+        if (ret) {
+            LOG_ERR("rad_tx_laser_x_blast failed: %d", ret);
+        }
+        k_sleep(K_MSEC(100));
     }
 }

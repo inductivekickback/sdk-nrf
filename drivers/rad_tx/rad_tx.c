@@ -140,7 +140,61 @@ static int dmv_rad_tx_laser_x_blast(const struct device *dev, team_id_laser_x_t 
     tx(&m_avail_pwms[p_cfg->pwm_index].pwm_instance, p_data->values, p_data->len);
     return 0;
 }
-#endif
+#endif /* CONFIG_RAD_TX_LASER_X */
+
+#if CONFIG_RAD_TX_DYNASTY
+static int dmv_rad_tx_dynasty_blast(const struct device *dev,
+                                      team_id_dynasty_t team_id,
+                                      weapon_id_dynasty_t weapon_id)
+{
+    const struct rad_tx_cfg *p_cfg  = dev->config;
+    struct rad_tx_data      *p_data = dev->data;
+
+    if (unlikely(!p_data->ready)) {
+        LOG_ERR("Driver is not initialized");
+        return -EBUSY;
+    }
+
+    int err = k_sem_take(&p_data->sem, K_FOREVER);
+    if (0 != err) {
+        return err;
+    }
+
+    p_data->len = RAD_TX_MSG_MAX_LEN_PWM_VALUES;
+
+    err = rad_msg_type_dynasty_encode(team_id,
+                                        weapon_id,
+                                        p_data->values,
+                                        &p_data->len);
+    if (err) {
+        return err;
+    }
+    tx(&m_avail_pwms[p_cfg->pwm_index].pwm_instance, p_data->values, p_data->len);
+    return 0;
+}
+#endif /* CONFIG_RAD_TX_DYNASTY */
+
+static int dmv_rad_tx_blast_again(const struct device *dev)
+{
+    const struct rad_tx_cfg *p_cfg  = dev->config;
+    struct rad_tx_data      *p_data = dev->data;
+
+    if (unlikely(!p_data->ready)) {
+        LOG_ERR("Driver is not initialized");
+        return -EBUSY;
+    }
+
+    if (0 == p_data->len) {
+        return -1;
+    }
+
+    int err = k_sem_take(&p_data->sem, K_FOREVER);
+    if (0 != err) {
+        return err;
+    }
+    tx(&m_avail_pwms[p_cfg->pwm_index].pwm_instance, p_data->values, p_data->len);
+    return 0;
+}
 
 static int dmv_rad_tx_init(const struct device *dev)
 {
@@ -205,8 +259,12 @@ ERR_EXIT:
 
 static const struct rad_tx_driver_api rad_tx_driver_api = {
     .init          = dmv_rad_tx_init,
+    .blast_again   = dmv_rad_tx_blast_again,
 #if CONFIG_RAD_TX_LASER_X
     .laser_x_blast = dmv_rad_tx_laser_x_blast,
+#endif
+#if CONFIG_RAD_TX_DYNASTY
+    .dynasty_blast = dmv_rad_tx_dynasty_blast,
 #endif
 };
 
