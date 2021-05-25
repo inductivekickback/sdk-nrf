@@ -89,7 +89,10 @@ void main(void)
     LOG_INF("TX dev is %p, name is %s", tx_dev, tx_dev->name);
 
     while (1) {
-        ret = rad_tx_laser_x_blast(tx_dev, TEAM_ID_LASER_X_RED);
+        rad_msg_laser_x_t laser_x_msg = {
+            .team_id = TEAM_ID_LASER_X_RED
+        };
+        ret = rad_tx_laser_x_blast(tx_dev, &laser_x_msg);
         if (ret) {
             LOG_ERR("rad_tx_laser_x_blast failed: %d", ret);
         }
@@ -101,7 +104,11 @@ void main(void)
         }
         k_sleep(K_MSEC(100));
 
-        ret = rad_tx_dynasty_blast(tx_dev, TEAM_ID_DYNASTY_RED, WEAPON_ID_DYNASTY_ROCKET);
+        rad_msg_dynasty_t dynasty_msg = {
+            .team_id   = TEAM_ID_DYNASTY_RED,
+            .weapon_id = WEAPON_ID_DYNASTY_ROCKET
+        };
+        ret = rad_tx_dynasty_blast(tx_dev, &dynasty_msg);
         if (ret) {
             LOG_ERR("rad_tx_laser_x_blast failed: %d", ret);
         }

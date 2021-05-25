@@ -81,7 +81,7 @@ for (int i=0; i < RAD_TX_MSG_TYPE_LASER_X_1_PULSE_LEN_PWM_VALUES; i++) { \
 } \
 } while (0)
 
-int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
+int rad_msg_type_laser_x_encode(rad_msg_laser_x_t *msg,
                                   nrf_pwm_values_common_t *values,
                                   uint32_t *len)
 {
@@ -104,7 +104,7 @@ int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
     ADD_0_BIT(p_values);
     ADD_0_BIT(p_values);
 
-    switch (team_id) {
+    switch (msg->team_id) {
     case TEAM_ID_LASER_X_RED:
         ADD_1_BIT(p_values);
         ADD_0_BIT(p_values);

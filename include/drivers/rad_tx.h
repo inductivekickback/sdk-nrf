@@ -82,6 +82,9 @@ extern "C" {
 #define RAD_TX_MSG_MAX_LEN_PWM_VALUES 0
 
 #if CONFIG_RAD_TX_RAD
+int rad_msg_type_rad_encode(rad_msg_rad_t *msg,
+                                  nrf_pwm_values_common_t *values,
+                                  uint32_t *len);
 #if RAD_TX_MSG_MAX_LEN_PWM_VALUES < RAD_TX_MSG_TYPE_RAD_MAX_MSG_LEN_PWM_VALUES
 #undef RAD_TX_MSG_MAX_LEN_PWM_VALUES
 #define RAD_TX_MSG_MAX_LEN_PWM_VALUES RAD_TX_MSG_TYPE_RAD_MAX_MSG_LEN_PWM_VALUES
@@ -89,8 +92,7 @@ extern "C" {
 #endif /* CONFIG_RAD_TX_RAD */
 
 #if CONFIG_RAD_TX_DYNASTY
-int rad_msg_type_dynasty_encode(team_id_dynasty_t team_id,
-                                  weapon_id_dynasty_t weapon_id,
+int rad_msg_type_dynasty_encode(rad_msg_dynasty_t *msg,
                                   nrf_pwm_values_common_t *values,
                                   uint32_t *len);
 #if RAD_TX_MSG_MAX_LEN_PWM_VALUES < RAD_TX_MSG_TYPE_DYNASTY_MAX_MSG_LEN_PWM_VALUES
@@ -100,7 +102,7 @@ int rad_msg_type_dynasty_encode(team_id_dynasty_t team_id,
 #endif /* CONFIG_RAD_TX_DYNASTY */
 
 #if CONFIG_RAD_TX_LASER_X
-int rad_msg_type_laser_x_encode(team_id_laser_x_t team_id,
+int rad_msg_type_laser_x_encode(rad_msg_laser_x_t *msg,
                                   nrf_pwm_values_common_t *values,
                                   uint32_t *len);
 #if RAD_TX_MSG_MAX_LEN_PWM_VALUES < RAD_TX_MSG_TYPE_LASER_X_MAX_MSG_LEN_PWM_VALUES
@@ -119,13 +121,11 @@ typedef int (*rad_tx_init_t)        (const struct device *dev);
 typedef int (*rad_tx_blast_again_t) (const struct device *dev); /* Repeat the last blast. */
 
 #if CONFIG_RAD_TX_LASER_X
-typedef int (*rad_tx_laser_x_blast_t) (const struct device *dev, team_id_laser_x_t team_id);
+typedef int (*rad_tx_laser_x_blast_t) (const struct device *dev, rad_msg_laser_x_t *msg);
 #endif
 
 #if CONFIG_RAD_TX_DYNASTY
-typedef int (*rad_tx_dynasty_blast_t) (const struct device *dev,
-                                         team_id_dynasty_t team_id,
-                                         weapon_id_dynasty_t weapon_id);
+typedef int (*rad_tx_dynasty_blast_t) (const struct device *dev, rad_msg_dynasty_t *msg);
 #endif
 
 /**
@@ -175,7 +175,7 @@ static inline int rad_tx_blast_again(const struct device *dev)
 }
 
 #if CONFIG_RAD_TX_LASER_X
-static inline int rad_tx_laser_x_blast(const struct device *dev, team_id_laser_x_t team_id)
+static inline int rad_tx_laser_x_blast(const struct device *dev, rad_msg_laser_x_t *msg)
 {
     struct rad_tx_driver_api *api;
 
@@ -188,14 +188,12 @@ static inline int rad_tx_laser_x_blast(const struct device *dev, team_id_laser_x
     if (api->laser_x_blast == NULL) {
         return -ENOTSUP;
     }
-    return api->laser_x_blast(dev, team_id);
+    return api->laser_x_blast(dev, msg);
 }
 #endif /* CONFIG_RAD_TX_LASER_X */
 
 #if CONFIG_RAD_TX_DYNASTY
-static inline int rad_tx_dynasty_blast(const struct device *dev,
-                                         team_id_dynasty_t team_id,
-                                         weapon_id_dynasty_t weapon_id)
+static inline int rad_tx_dynasty_blast(const struct device *dev, rad_msg_dynasty_t *msg)
 {
     struct rad_tx_driver_api *api;
 
@@ -208,7 +206,7 @@ static inline int rad_tx_dynasty_blast(const struct device *dev,
     if (api->dynasty_blast == NULL) {
         return -ENOTSUP;
     }
-    return api->dynasty_blast(dev, team_id, weapon_id);
+    return api->dynasty_blast(dev, msg);
 }
 #endif /* CONFIG_RAD_TX_DYNASTY */
 

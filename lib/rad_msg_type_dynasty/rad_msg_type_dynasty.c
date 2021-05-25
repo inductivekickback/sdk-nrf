@@ -149,8 +149,7 @@ for (int i=0; i < RAD_TX_MSG_TYPE_DYNASTY_1_PULSE_LEN_PWM_VALUES; i++) { \
 } \
 } while (0)
 
-int rad_msg_type_dynasty_encode(team_id_dynasty_t team_id,
-                                  weapon_id_dynasty_t weapon_id,
+int rad_msg_type_dynasty_encode(rad_msg_dynasty_t *msg,
                                   nrf_pwm_values_common_t *values,
                                   uint32_t *len)
 {
@@ -190,7 +189,7 @@ int rad_msg_type_dynasty_encode(team_id_dynasty_t team_id,
     ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
     ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
 
-    switch (team_id) {
+    switch (msg->team_id) {
     case TEAM_ID_DYNASTY_BLUE:
         ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
         ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
@@ -223,7 +222,7 @@ int rad_msg_type_dynasty_encode(team_id_dynasty_t team_id,
     ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
     ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
 
-    switch (weapon_id) {
+    switch (msg->weapon_id) {
     case WEAPON_ID_DYNASTY_PISTOL:
         ADD_0_BIT(p_values, RAD_TX_DUTY_CYCLE_0);
         ADD_1_BIT(p_values, RAD_TX_DUTY_CYCLE_50);
@@ -241,7 +240,7 @@ int rad_msg_type_dynasty_encode(team_id_dynasty_t team_id,
     }
 
     /* Add the checksum byte. */
-    uint8_t checksum = checksum_calc(team_id, weapon_id);
+    uint8_t checksum = checksum_calc(msg->team_id, msg->weapon_id);
 
     if (INVALID_CHECKSUM == checksum) {
         return -1;

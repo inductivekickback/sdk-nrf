@@ -114,7 +114,7 @@ static void tx(nrfx_pwm_t *pwm_inst, const nrf_pwm_values_common_t *values, uint
 }
 
 #if CONFIG_RAD_TX_LASER_X
-static int dmv_rad_tx_laser_x_blast(const struct device *dev, team_id_laser_x_t team_id)
+static int dmv_rad_tx_laser_x_blast(const struct device *dev, rad_msg_laser_x_t *msg)
 {
     const struct rad_tx_cfg *p_cfg  = dev->config;
     struct rad_tx_data      *p_data = dev->data;
@@ -131,9 +131,7 @@ static int dmv_rad_tx_laser_x_blast(const struct device *dev, team_id_laser_x_t 
 
     p_data->len = RAD_TX_MSG_MAX_LEN_PWM_VALUES;
 
-    err = rad_msg_type_laser_x_encode(team_id,
-                                        p_data->values,
-                                        &p_data->len);
+    err = rad_msg_type_laser_x_encode(msg, p_data->values, &p_data->len);
     if (err) {
         return err;
     }
@@ -143,9 +141,7 @@ static int dmv_rad_tx_laser_x_blast(const struct device *dev, team_id_laser_x_t 
 #endif /* CONFIG_RAD_TX_LASER_X */
 
 #if CONFIG_RAD_TX_DYNASTY
-static int dmv_rad_tx_dynasty_blast(const struct device *dev,
-                                      team_id_dynasty_t team_id,
-                                      weapon_id_dynasty_t weapon_id)
+static int dmv_rad_tx_dynasty_blast(const struct device *dev, rad_msg_dynasty_t *msg)
 {
     const struct rad_tx_cfg *p_cfg  = dev->config;
     struct rad_tx_data      *p_data = dev->data;
@@ -162,10 +158,7 @@ static int dmv_rad_tx_dynasty_blast(const struct device *dev,
 
     p_data->len = RAD_TX_MSG_MAX_LEN_PWM_VALUES;
 
-    err = rad_msg_type_dynasty_encode(team_id,
-                                        weapon_id,
-                                        p_data->values,
-                                        &p_data->len);
+    err = rad_msg_type_dynasty_encode(msg, p_data->values, &p_data->len);
     if (err) {
         return err;
     }

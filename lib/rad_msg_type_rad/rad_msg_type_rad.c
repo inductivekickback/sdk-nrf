@@ -115,7 +115,25 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
 #if CONFIG_RAD_TX_RAD
 #include <drivers/rad_tx.h>
 
-// TODO: 
+int rad_msg_type_rad_encode(rad_msg_rad_t *msg, nrf_pwm_values_common_t *values, uint32_t *len)
+{
+    nrf_pwm_values_common_t *p_values = values;
+
+    if (*len < RAD_TX_MSG_TYPE_RAD_MAX_MSG_LEN_PWM_VALUES) {
+        return -ENOMEM;
+    }
+
+    for (int i=0; i < RAD_TX_MSG_TYPE_RAD_START_PULSE_PWM_VALUES; i++) {
+        *p_values = RAD_TX_DUTY_CYCLE_50;
+        p_values++;
+    }
+
+    *p_values = RAD_TX_DUTY_CYCLE_0;
+    p_values++;
+
+    *len = (p_values - values);
+    return 0;
+}
 
 #endif /* CONFIG_RAD_TX_RAD */
 
