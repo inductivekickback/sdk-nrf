@@ -78,7 +78,7 @@ static void line_clear(struct rad_rx_data *p_data)
 
 static void line_clear_timer_expire(struct k_timer *timer_id)
 {
-    // TODO: Ensure that this interrupt has a higher priority than the GPIO interrupt
+    // NOTE: Ensure that this interrupt has a higher priority than the GPIO interrupt
     //       to preclude a race condition.
     struct rad_rx_data *p_data = CONTAINER_OF(timer_id, struct rad_rx_data, timer);
     line_clear(p_data);
