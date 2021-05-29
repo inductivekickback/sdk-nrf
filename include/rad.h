@@ -36,9 +36,9 @@ extern "C" {
 #define RAD_MSG_TYPE_RAD_1_PULSE_LEN_US         780
 #define RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_US    390
 #define RAD_MSG_TYPE_RAD_0_BIT_LEN_US           (RAD_MSG_TYPE_RAD_0_PULSE_LEN_US + \
-	                                               RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_US)
+	                                              RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_US)
 #define RAD_MSG_TYPE_RAD_1_BIT_LEN_US           (RAD_MSG_TYPE_RAD_1_PULSE_LEN_US + \
-                                                   RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_US)
+                                                  RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_US)
 
 #define RAD_MSG_TYPE_DYNASTY_LEN_PULSES         41
 #define RAD_MSG_TYPE_DYNASTY_LEN_IR_BITS        40
@@ -55,9 +55,9 @@ extern "C" {
 #define RAD_MSG_TYPE_LASER_X_0_PULSE_LEN_US     550
 #define RAD_MSG_TYPE_LASER_X_1_PULSE_LEN_US     1525
 #define RAD_MSG_TYPE_LASER_X_0_BIT_LEN_US       (RAD_MSG_TYPE_LASER_X_SPACE_PULSE_LEN_US + \
-                                                   RAD_MSG_TYPE_LASER_X_0_PULSE_LEN_US)
+                                                  RAD_MSG_TYPE_LASER_X_0_PULSE_LEN_US)
 #define RAD_MSG_TYPE_LASER_X_1_BIT_LEN_US       (RAD_MSG_TYPE_LASER_X_SPACE_PULSE_LEN_US + \
-                                                   RAD_MSG_TYPE_LASER_X_1_PULSE_LEN_US)
+                                                  RAD_MSG_TYPE_LASER_X_1_PULSE_LEN_US)
 
 typedef enum
 {
