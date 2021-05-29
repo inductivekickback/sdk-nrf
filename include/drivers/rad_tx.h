@@ -117,7 +117,7 @@ int rad_msg_type_laser_x_encode(rad_msg_laser_x_t *msg,
 #endif
 #endif
 
-typedef int (*rad_tx_init_t) (const struct device *dev);
+typedef int (*rad_tx_init_t)        (const struct device *dev);
 typedef int (*rad_tx_blast_again_t) (const struct device *dev); /* Repeat the last blast. */
 
 #if CONFIG_RAD_TX_RAD

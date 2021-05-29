@@ -21,11 +21,11 @@ extern "C" {
 
 #include <rad.h>
 
-#define RAD_RX_MSG_START_PULSE_MARGIN_US 500 /* A valid start pulse can be +/- this much. */
-#define RAD_RX_MSG_BIT_MARGIN_US         125 /* A valid bit pulse can be +/- this much. */
+#define RAD_RX_START_PULSE_MARGIN_US 500 /* A valid start pulse can be +/- this much. */
+#define RAD_RX_BIT_MARGIN_US         125 /* A valid bit pulse can be +/- this much. */
 
-#define RAD_RX_MSG_MAX_LEN               0
-#define RAD_RX_LINE_CLEAR_LEN_US         0
+#define RAD_RX_MSG_MAX_LEN           0
+#define RAD_RX_LINE_CLEAR_LEN_US     0
 
 typedef enum
 {
@@ -42,9 +42,9 @@ typedef enum
 #define RAD_RX_MSG_MAX_LEN RAD_MSG_TYPE_RAD_LEN_PULSES
 #endif
 #if CONFIG_RAD_RX_ACCEPT_RAD
-rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
-                                         uint32_t       len,
-                                         rad_msg_rad_t *msg);
+rad_parse_state_t rad_msg_type_rad_parse(uint32_t *message,
+                                           uint32_t len,
+                                           rad_msg_rad_t *msg);
 #if RAD_RX_LINE_CLEAR_LEN_US < RAD_MSG_TYPE_RAD_LINE_CLEAR_LEN_US
 #undef RAD_RX_LINE_CLEAR_LEN_US
 #define RAD_RX_LINE_CLEAR_LEN_US RAD_MSG_TYPE_RAD_LINE_CLEAR_LEN_US
@@ -59,9 +59,9 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
 #define RAD_RX_MSG_MAX_LEN RAD_MSG_TYPE_DYNASTY_LEN_PULSES
 #endif
 #if CONFIG_RAD_RX_ACCEPT_DYNASTY
-rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
-                                             uint32_t           len,
-                                             rad_msg_dynasty_t *msg);
+rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t *message,
+                                               uint32_t len,
+                                               rad_msg_dynasty_t *msg);
 #if RAD_RX_LINE_CLEAR_LEN_US < RAD_MSG_TYPE_DYNASTY_LINE_CLEAR_LEN_US
 #undef RAD_RX_LINE_CLEAR_LEN_US
 #define RAD_RX_LINE_CLEAR_LEN_US RAD_MSG_TYPE_DYNASTY_LINE_CLEAR_LEN_US
@@ -75,9 +75,9 @@ rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
 #define RAD_RX_MAX_LEN RAD_MSG_TYPE_LASER_X_LEN_PULSES
 #endif
 #if CONFIG_RAD_RX_ACCEPT_LASER_X
-rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t          *message,
-                                             uint32_t           len,
-                                             rad_msg_laser_x_t *msg);
+rad_parse_state_t rad_msg_type_laser_x_parse(uint32_t *message,
+                                               uint32_t len,
+                                               rad_msg_laser_x_t *msg);
 #if RAD_RX_LINE_CLEAR_LEN_US < RAD_MSG_TYPE_LASER_X_LINE_CLEAR_LEN_US
 #undef RAD_RX_LINE_CLEAR_LEN_US
 #define RAD_RX_LINE_CLEAR_LEN_US RAD_MSG_TYPE_LASER_X_LINE_CLEAR_LEN_US
@@ -137,11 +137,11 @@ static inline int rad_rx_set_callback(const struct device *dev, rad_rx_callback_
     return api->set_callback(dev, cb);
 }
 
-#define IS_VALID_START_PULSE(value, target) ((target)-RAD_RX_MSG_START_PULSE_MARGIN_US <= (value) && \
-                                                (target)+RAD_RX_MSG_START_PULSE_MARGIN_US >= (value))
+#define IS_VALID_START_PULSE(value, target) ((target)-RAD_RX_START_PULSE_MARGIN_US <= (value) && \
+                                                (target)+RAD_RX_START_PULSE_MARGIN_US >= (value))
 
-#define IS_VALID_BIT_PULSE(value, target) ((target)-RAD_RX_MSG_BIT_MARGIN_US <= (value) && \
-                                                (target)+RAD_RX_MSG_BIT_MARGIN_US >= (value))
+#define IS_VALID_BIT_PULSE(value, target) ((target)-RAD_RX_BIT_MARGIN_US <= (value) && \
+                                                (target)+RAD_RX_BIT_MARGIN_US >= (value))
 
 #ifdef __cplusplus
 }
