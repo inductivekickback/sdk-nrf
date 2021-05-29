@@ -116,21 +116,21 @@ rad_parse_state_t rad_msg_type_rad_parse(uint32_t      *message,
 #include <drivers/rad_tx.h>
 
 #define ADD_0_BIT(p_values) do { \
-for (int i=0; i < RAD_MSG_TYPE_RAD_0_PULSE_LEN_PWM_VALUES; i++) \
+for (int i=0; i < RAD_TX_RAD_0_PULSE_LEN_PWM_VALUES; i++) \
 { \
     *p_values++ = RAD_TX_DUTY_CYCLE_0; \
 } \
-for (int i=0; i < RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_PWM_VALUES; i++) { \
+for (int i=0; i < RAD_TX_RAD_ACTIVE_PULSE_LEN_PWM_VALUES; i++) { \
     *p_values++ = RAD_TX_DUTY_CYCLE_50; \
 } \
 } while (0)
 
 #define ADD_1_BIT(p_values) do { \
-for (int i=0; i < RAD_MSG_TYPE_RAD_1_PULSE_LEN_PWM_VALUES; i++) \
+for (int i=0; i < RAD_TX_RAD_1_PULSE_LEN_PWM_VALUES; i++) \
 { \
     *p_values++ = RAD_TX_DUTY_CYCLE_0; \
 } \
-for (int i=0; i < RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_PWM_VALUES; i++) { \
+for (int i=0; i < RAD_TX_RAD_ACTIVE_PULSE_LEN_PWM_VALUES; i++) { \
     *p_values++ = RAD_TX_DUTY_CYCLE_50; \
 } \
 } while (0)
@@ -139,11 +139,11 @@ int rad_msg_type_rad_encode(rad_msg_rad_t *msg, nrf_pwm_values_common_t *values,
 {
     nrf_pwm_values_common_t *p_values = values;
 
-    if (*len < RAD_TX_MSG_TYPE_RAD_MAX_MSG_LEN_PWM_VALUES) {
+    if (*len < RAD_TX_RAD_MAX_MSG_LEN_PWM_VALUES) {
         return -ENOMEM;
     }
 
-    for (int i=0; i < RAD_TX_MSG_TYPE_RAD_START_PULSE_PWM_VALUES; i++) {
+    for (int i=0; i < RAD_TX_RAD_START_PULSE_LEN_PWM_VALUES; i++) {
         *p_values = RAD_TX_DUTY_CYCLE_50;
         p_values++;
     }

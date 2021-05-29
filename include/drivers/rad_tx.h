@@ -26,68 +26,68 @@ extern "C" {
 /**
  * With a 16MHz clock the 37.9KHz period is ~422 ticks.
  */
-#define RAD_TX_TICKS_PER_PERIOD     422
-#define RAD_TX_DUTY_CYCLE_0         RAD_TX_TICKS_PER_PERIOD
-#define RAD_TX_DUTY_CYCLE_50        (RAD_TX_TICKS_PER_PERIOD / 2)
-#define RAD_TX_PWM_VALUE_LEN_US     26
+#define RAD_TX_TICKS_PER_PERIOD                   422
+#define RAD_TX_DUTY_CYCLE_0                       RAD_TX_TICKS_PER_PERIOD
+#define RAD_TX_DUTY_CYCLE_50                      (RAD_TX_TICKS_PER_PERIOD / 2)
+#define RAD_TX_PWM_VALUE_LEN_US                   26
 
-#define RAD_TX_MSG_TYPE_RAD_START_PULSE_PWM_VALUES     (RAD_MSG_TYPE_RAD_START_PULSE_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_PWM_VALUES   (RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_MSG_TYPE_RAD_0_PULSE_LEN_PWM_VALUES        (RAD_MSG_TYPE_RAD_0_PULSE_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_MSG_TYPE_RAD_1_PULSE_LEN_PWM_VALUES        (RAD_MSG_TYPE_RAD_1_PULSE_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_TX_MSG_TYPE_RAD_0_BIT_LEN_PWM_VALUES       (RAD_MSG_TYPE_RAD_0_BIT_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_TX_MSG_TYPE_RAD_1_BIT_LEN_PWM_VALUES       (RAD_MSG_TYPE_RAD_1_BIT_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_TX_MSG_TYPE_RAD_MAX_BIT_LEN_PWM_VALUES     MAX(RAD_TX_MSG_TYPE_RAD_0_BIT_LEN_PWM_VALUES, \
-                                                         RAD_TX_MSG_TYPE_RAD_1_BIT_LEN_PWM_VALUES)
-#define RAD_TX_MSG_TYPE_RAD_MAX_MSG_LEN_PWM_VALUES     (RAD_TX_MSG_TYPE_RAD_START_PULSE_PWM_VALUES + \
-                                                         (RAD_TX_MSG_TYPE_RAD_MAX_BIT_LEN_PWM_VALUES * \
-                                                         RAD_MSG_TYPE_RAD_LEN_IR_BITS) + 1)
+#define RAD_TX_RAD_START_PULSE_LEN_PWM_VALUES     (RAD_MSG_TYPE_RAD_START_PULSE_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_RAD_ACTIVE_PULSE_LEN_PWM_VALUES    (RAD_MSG_TYPE_RAD_ACTIVE_PULSE_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_RAD_0_PULSE_LEN_PWM_VALUES         (RAD_MSG_TYPE_RAD_0_PULSE_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_RAD_1_PULSE_LEN_PWM_VALUES         (RAD_MSG_TYPE_RAD_1_PULSE_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_RAD_0_BIT_LEN_PWM_VALUES           (RAD_MSG_TYPE_RAD_0_BIT_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_RAD_1_BIT_LEN_PWM_VALUES           (RAD_MSG_TYPE_RAD_1_BIT_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_RAD_MAX_BIT_LEN_PWM_VALUES         MAX(RAD_TX_RAD_0_BIT_LEN_PWM_VALUES, \
+                                                    RAD_TX_RAD_1_BIT_LEN_PWM_VALUES)
+#define RAD_TX_RAD_MAX_MSG_LEN_PWM_VALUES         (RAD_TX_RAD_START_PULSE_LEN_PWM_VALUES + \
+                                                    (RAD_TX_RAD_MAX_BIT_LEN_PWM_VALUES * \
+                                                    RAD_MSG_TYPE_RAD_LEN_IR_BITS) + 1)
 
-#define RAD_TX_MSG_TYPE_DYNASTY_START_PULSE_PWM_VALUES (RAD_MSG_TYPE_DYNASTY_START_PULSE_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_TX_MSG_TYPE_DYNASTY_0_PULSE_LEN_PWM_VALUES (RAD_MSG_TYPE_DYNASTY_0_PULSE_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_TX_MSG_TYPE_DYNASTY_1_PULSE_LEN_PWM_VALUES (RAD_MSG_TYPE_DYNASTY_1_PULSE_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_TX_MSG_TYPE_DYNASTY_MAX_BIT_LEN_PWM_VALUES MAX(RAD_TX_MSG_TYPE_DYNASTY_0_PULSE_LEN_PWM_VALUES, \
-                                                         RAD_TX_MSG_TYPE_DYNASTY_1_PULSE_LEN_PWM_VALUES)
-#define RAD_TX_MSG_TYPE_DYNASTY_MAX_MSG_LEN_PWM_VALUES (RAD_TX_MSG_TYPE_DYNASTY_START_PULSE_PWM_VALUES + \
-                                                         (RAD_TX_MSG_TYPE_DYNASTY_MAX_BIT_LEN_PWM_VALUES * \
-                                                         RAD_MSG_TYPE_DYNASTY_LEN_IR_BITS) + 1)
+#define RAD_TX_DYNASTY_START_PULSE_LEN_PWM_VALUES (RAD_MSG_TYPE_DYNASTY_START_PULSE_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_DYNASTY_0_PULSE_LEN_PWM_VALUES     (RAD_MSG_TYPE_DYNASTY_0_PULSE_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_DYNASTY_1_PULSE_LEN_PWM_VALUES     (RAD_MSG_TYPE_DYNASTY_1_PULSE_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_DYNASTY_MAX_BIT_LEN_PWM_VALUES     MAX(RAD_TX_DYNASTY_0_PULSE_LEN_PWM_VALUES, \
+                                                    RAD_TX_DYNASTY_1_PULSE_LEN_PWM_VALUES)
+#define RAD_TX_DYNASTY_MAX_MSG_LEN_PWM_VALUES     (RAD_TX_DYNASTY_START_PULSE_LEN_PWM_VALUES + \
+                                                    (RAD_TX_DYNASTY_MAX_BIT_LEN_PWM_VALUES * \
+                                                    RAD_MSG_TYPE_DYNASTY_LEN_IR_BITS) + 1)
 
-#define RAD_TX_MSG_TYPE_LASER_X_START_PULSE_PWM_VALUES (RAD_MSG_TYPE_LASER_X_START_PULSE_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_TX_MSG_TYPE_LASER_X_SPACE_PULSE_PWM_VALUES (RAD_MSG_TYPE_LASER_X_SPACE_PULSE_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_TX_MSG_TYPE_LASER_X_0_PULSE_LEN_PWM_VALUES (RAD_MSG_TYPE_LASER_X_0_PULSE_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_TX_MSG_TYPE_LASER_X_1_PULSE_LEN_PWM_VALUES (RAD_MSG_TYPE_LASER_X_1_PULSE_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_TX_MSG_TYPE_LASER_X_0_BIT_LEN_PWM_VALUES   (RAD_MSG_TYPE_LASER_X_0_BIT_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_TX_MSG_TYPE_LASER_X_1_BIT_LEN_PWM_VALUES   (RAD_MSG_TYPE_LASER_X_1_BIT_LEN_US / \
-                                                         RAD_TX_PWM_VALUE_LEN_US)
-#define RAD_TX_MSG_TYPE_LASER_X_MAX_BIT_LEN_PWM_VALUES MAX(RAD_TX_MSG_TYPE_LASER_X_0_BIT_LEN_PWM_VALUES, \
-                                                         RAD_TX_MSG_TYPE_LASER_X_1_BIT_LEN_PWM_VALUES)
-#define RAD_TX_MSG_TYPE_LASER_X_MAX_MSG_LEN_PWM_VALUES (RAD_TX_MSG_TYPE_LASER_X_START_PULSE_PWM_VALUES + \
-                                                         (RAD_TX_MSG_TYPE_LASER_X_MAX_BIT_LEN_PWM_VALUES * \
-                                                         RAD_MSG_TYPE_LASER_X_LEN_IR_BITS) + 1)
+#define RAD_TX_LASER_X_START_PULSE_LEN_PWM_VALUES (RAD_MSG_TYPE_LASER_X_START_PULSE_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_LASER_X_SPACE_PULSE_PWM_VALUES     (RAD_MSG_TYPE_LASER_X_SPACE_PULSE_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_LASER_X_0_PULSE_LEN_PWM_VALUES     (RAD_MSG_TYPE_LASER_X_0_PULSE_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_LASER_X_1_PULSE_LEN_PWM_VALUES     (RAD_MSG_TYPE_LASER_X_1_PULSE_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_LASER_X_0_BIT_LEN_PWM_VALUES       (RAD_MSG_TYPE_LASER_X_0_BIT_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_LASER_X_1_BIT_LEN_PWM_VALUES       (RAD_MSG_TYPE_LASER_X_1_BIT_LEN_US / \
+                                                    RAD_TX_PWM_VALUE_LEN_US)
+#define RAD_TX_LASER_X_MAX_BIT_LEN_PWM_VALUES     MAX(RAD_TX_LASER_X_0_BIT_LEN_PWM_VALUES, \
+                                                    RAD_TX_LASER_X_1_BIT_LEN_PWM_VALUES)
+#define RAD_TX_LASER_X_MAX_MSG_LEN_PWM_VALUES     (RAD_TX_LASER_X_START_PULSE_LEN_PWM_VALUES + \
+                                                    (RAD_TX_LASER_X_MAX_BIT_LEN_PWM_VALUES * \
+                                                    RAD_MSG_TYPE_LASER_X_LEN_IR_BITS) + 1)
 
 #define RAD_TX_MSG_MAX_LEN_PWM_VALUES 0
 
 #if CONFIG_RAD_TX_RAD
 int rad_msg_type_rad_encode(rad_msg_rad_t *msg,
-                                  nrf_pwm_values_common_t *values,
-                                  uint32_t *len);
-#if RAD_TX_MSG_MAX_LEN_PWM_VALUES < RAD_TX_MSG_TYPE_RAD_MAX_MSG_LEN_PWM_VALUES
+                              nrf_pwm_values_common_t *values,
+                              uint32_t *len);
+#if RAD_TX_MSG_MAX_LEN_PWM_VALUES < RAD_TX_RAD_MAX_MSG_LEN_PWM_VALUES
 #undef RAD_TX_MSG_MAX_LEN_PWM_VALUES
-#define RAD_TX_MSG_MAX_LEN_PWM_VALUES RAD_TX_MSG_TYPE_RAD_MAX_MSG_LEN_PWM_VALUES
+#define RAD_TX_MSG_MAX_LEN_PWM_VALUES RAD_TX_RAD_MAX_MSG_LEN_PWM_VALUES
 #endif
 #endif /* CONFIG_RAD_TX_RAD */
 
@@ -95,9 +95,9 @@ int rad_msg_type_rad_encode(rad_msg_rad_t *msg,
 int rad_msg_type_dynasty_encode(rad_msg_dynasty_t *msg,
                                   nrf_pwm_values_common_t *values,
                                   uint32_t *len);
-#if RAD_TX_MSG_MAX_LEN_PWM_VALUES < RAD_TX_MSG_TYPE_DYNASTY_MAX_MSG_LEN_PWM_VALUES
+#if RAD_TX_MSG_MAX_LEN_PWM_VALUES < RAD_TX_DYNASTY_MAX_MSG_LEN_PWM_VALUES
 #undef RAD_TX_MSG_MAX_LEN_PWM_VALUES
-#define RAD_TX_MSG_MAX_LEN_PWM_VALUES RAD_TX_MSG_TYPE_DYNASTY_MAX_MSG_LEN_PWM_VALUES
+#define RAD_TX_MSG_MAX_LEN_PWM_VALUES RAD_TX_DYNASTY_MAX_MSG_LEN_PWM_VALUES
 #endif
 #endif /* CONFIG_RAD_TX_DYNASTY */
 
@@ -105,9 +105,9 @@ int rad_msg_type_dynasty_encode(rad_msg_dynasty_t *msg,
 int rad_msg_type_laser_x_encode(rad_msg_laser_x_t *msg,
                                   nrf_pwm_values_common_t *values,
                                   uint32_t *len);
-#if RAD_TX_MSG_MAX_LEN_PWM_VALUES < RAD_TX_MSG_TYPE_LASER_X_MAX_MSG_LEN_PWM_VALUES
+#if RAD_TX_MSG_MAX_LEN_PWM_VALUES < RAD_TX_LASER_X_MAX_MSG_LEN_PWM_VALUES
 #undef RAD_TX_MSG_MAX_LEN_PWM_VALUES
-#define RAD_TX_MSG_MAX_LEN_PWM_VALUES RAD_TX_MSG_TYPE_LASER_X_MAX_MSG_LEN_PWM_VALUES
+#define RAD_TX_MSG_MAX_LEN_PWM_VALUES RAD_TX_LASER_X_MAX_MSG_LEN_PWM_VALUES
 #endif
 #endif /* CONFIG_RAD_TX_LASER_X */
 
@@ -117,7 +117,7 @@ int rad_msg_type_laser_x_encode(rad_msg_laser_x_t *msg,
 #endif
 #endif
 
-typedef int (*rad_tx_init_t)        (const struct device *dev);
+typedef int (*rad_tx_init_t) (const struct device *dev);
 typedef int (*rad_tx_blast_again_t) (const struct device *dev); /* Repeat the last blast. */
 
 #if CONFIG_RAD_TX_RAD

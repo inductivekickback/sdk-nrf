@@ -136,13 +136,13 @@ rad_parse_state_t rad_msg_type_dynasty_parse(uint32_t          *message,
 #include <drivers/rad_tx.h>
 
 #define ADD_0_BIT(p_values, duty_cycle) do { \
-for (int i=0; i < RAD_TX_MSG_TYPE_DYNASTY_0_PULSE_LEN_PWM_VALUES; i++) { \
+for (int i=0; i < RAD_TX_DYNASTY_0_PULSE_LEN_PWM_VALUES; i++) { \
     *p_values++ = duty_cycle; \
 } \
 } while (0)
 
 #define ADD_1_BIT(p_values, duty_cyle) do { \
-for (int i=0; i < RAD_TX_MSG_TYPE_DYNASTY_1_PULSE_LEN_PWM_VALUES; i++) { \
+for (int i=0; i < RAD_TX_DYNASTY_1_PULSE_LEN_PWM_VALUES; i++) { \
     *p_values++ = duty_cyle; \
 } \
 } while (0)
@@ -153,11 +153,11 @@ int rad_msg_type_dynasty_encode(rad_msg_dynasty_t *msg,
 {
     nrf_pwm_values_common_t *p_values = values;
 
-    if (*len < RAD_TX_MSG_TYPE_DYNASTY_MAX_MSG_LEN_PWM_VALUES) {
+    if (*len < RAD_TX_DYNASTY_MAX_MSG_LEN_PWM_VALUES) {
         return -ENOMEM;
     }
 
-    for (int i=0; i < RAD_TX_MSG_TYPE_DYNASTY_START_PULSE_PWM_VALUES; i++) {
+    for (int i=0; i < RAD_TX_DYNASTY_START_PULSE_LEN_PWM_VALUES; i++) {
         *p_values = RAD_TX_DUTY_CYCLE_50;
         p_values++;
     }
