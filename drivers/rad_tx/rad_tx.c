@@ -21,11 +21,11 @@ LOG_MODULE_REGISTER(rad_tx, CONFIG_RAD_TX_LOG_LEVEL);
 
 typedef struct
 {
+    unsigned int irq_p;
+    unsigned int priority_p;
+    nrfx_pwm_t   pwm_instance;
+    bool         ready;
     void (*isr_p)(void);
-    unsigned int             irq_p;
-    unsigned int             priority_p;
-    nrfx_pwm_t               pwm_instance;
-    bool                     ready;
 } pwm_periph_t;
 
 static pwm_periph_t m_avail_pwms[] = {
@@ -107,10 +107,7 @@ static void tx(nrfx_pwm_t *pwm_inst, const nrf_pwm_values_common_t *values, uint
     seq.values.p_common = values;
     seq.length          = len;
 
-    nrfx_pwm_simple_playback(pwm_inst,
-                             &seq,
-                             1,
-                             NRFX_PWM_FLAG_STOP);
+    nrfx_pwm_simple_playback(pwm_inst, &seq, 1, NRFX_PWM_FLAG_STOP);
 }
 
 #if CONFIG_RAD_TX_RAD
@@ -240,24 +237,24 @@ static int dmv_rad_tx_init(const struct device *dev)
 
     if (!m_avail_pwms[p_cfg->pwm_index].ready) {
         nrfx_pwm_config_t config = NRFX_PWM_DEFAULT_CONFIG(p_cfg->pin,
-                                                           NRFX_PWM_PIN_NOT_USED,
-                                                           NRFX_PWM_PIN_NOT_USED,
-                                                           NRFX_PWM_PIN_NOT_USED);
+                                                            NRFX_PWM_PIN_NOT_USED,
+                                                            NRFX_PWM_PIN_NOT_USED,
+                                                            NRFX_PWM_PIN_NOT_USED);
         config.base_clock = NRF_PWM_CLK_16MHz;
         config.top_value  = RAD_TX_TICKS_PER_PERIOD;
         config.load_mode  = NRF_PWM_LOAD_COMMON;
 
         /* NOTE: irq_connect_dynamic returns a vector index instead of an error code. */
         irq_connect_dynamic(m_avail_pwms[p_cfg->pwm_index].irq_p,
-                                  m_avail_pwms[p_cfg->pwm_index].priority_p,
-                                  nrfx_isr,
-                                  m_avail_pwms[p_cfg->pwm_index].isr_p,
-                                  0);
+                              m_avail_pwms[p_cfg->pwm_index].priority_p,
+                              nrfx_isr,
+                              m_avail_pwms[p_cfg->pwm_index].isr_p,
+                              0);
 
         nrfx_err_t err = nrfx_pwm_init(&m_avail_pwms[p_cfg->pwm_index].pwm_instance,
-                                       &config,
-                                       pwm_handler,
-                                       p_data);
+                                         &config,
+                                         pwm_handler,
+                                         p_data);
         if (NRFX_SUCCESS != err) {
             goto ERR_EXIT;
         }
@@ -281,7 +278,7 @@ static const struct rad_tx_driver_api rad_tx_driver_api = {
     .init          = dmv_rad_tx_init,
     .blast_again   = dmv_rad_tx_blast_again,
 #if CONFIG_RAD_TX_RAD
-    .rad_blast = dmv_rad_tx_rad_blast,
+    .rad_blast     = dmv_rad_tx_rad_blast,
 #endif
 #if CONFIG_RAD_TX_RAD
     .laser_x_blast = dmv_rad_tx_laser_x_blast,

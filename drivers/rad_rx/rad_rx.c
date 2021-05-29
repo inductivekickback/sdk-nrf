@@ -150,8 +150,8 @@ static void message_decode(struct k_work *item)
         }
 
         p_data->laser_x_parse_state = rad_msg_type_laser_x_parse(&p_data->message[0],
-                                                                     len,
-                                                                     &laser_x_msg);
+                                                                   len,
+                                                                   &laser_x_msg);
         if (RAD_PARSE_STATE_VALID == p_data->laser_x_parse_state) {
             if (p_data->cb) {
                 p_data->cb(RAD_MSG_TYPE_LASER_X, (void*)&laser_x_msg);
@@ -185,8 +185,8 @@ static void message_decode(struct k_work *item)
         }
 
         p_data->dynasty_parse_state = rad_msg_type_dynasty_parse(&p_data->message[0],
-                                                                     len,
-                                                                     &dynasty_msg);
+                                                                    len,
+                                                                    &dynasty_msg);
         if (RAD_PARSE_STATE_VALID == p_data->dynasty_parse_state) {
             if (p_data->cb) {
                 p_data->cb(RAD_MSG_TYPE_DYNASTY, (void*)&dynasty_msg);
@@ -278,11 +278,11 @@ static int dmv_rad_rx_init(const struct device *dev)
     gpio_init_callback(&p_data->cb_data, input_changed, BIT(p_cfg->pin));
     gpio_add_callback(p_data->dev, &p_data->cb_data);
 
-    p_data->state     = MSG_STATE_WAIT_FOR_LINE_CLEAR;
-    p_data->index     = ATOMIC_INIT(0);
-    p_data->cb        = NULL;
-    p_data->ready     = true;
-    p_data->pin       = p_cfg->pin;
+    p_data->state = MSG_STATE_WAIT_FOR_LINE_CLEAR;
+    p_data->index = ATOMIC_INIT(0);
+    p_data->cb    = NULL;
+    p_data->ready = true;
+    p_data->pin   = p_cfg->pin;
 
     if (!gpio_pin_get(p_data->dev, p_cfg->pin)) {
         k_timer_start(&p_data->timer, K_USEC(RAD_RX_LINE_CLEAR_LEN_US), K_NO_WAIT);
