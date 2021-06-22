@@ -22,6 +22,10 @@
 
 #include <bluetooth/services/nus.h>
 
+#include <mpsl.h>
+#include <mpsl_radio_notification.h>
+#include <mpsl_timeslot.h>
+
 #include <settings/settings.h>
 
 #include <stdio.h>
@@ -33,8 +37,6 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN	(sizeof(DEVICE_NAME) - 1)
-
-static K_SEM_DEFINE(ble_init_ok, 0, 1);
 
 static struct bt_conn *current_conn;
 static struct bt_conn *auth_conn;
@@ -109,11 +111,38 @@ void error(void)
 	}
 }
 
+static void radio_notify_cb(const void *context)
+{
+	LOG_INF("QDEC_IRQHandler!");
+}
+
 void main(void)
 {
 	int err = 0;
 
 	bt_conn_cb_register(&conn_callbacks);
+
+	if (!mpsl_is_initialized()) {
+		LOG_ERR("MPSL is not initialized");
+	}
+
+	uint8_t mpsl_rev;
+	err = mpsl_build_revision_get(&mpsl_rev);
+	if (err) {
+		LOG_ERR("mpsl_build_revision_get failed (err: %d)", err);
+	} else {
+		LOG_INF("MPSL build rev: %d", mpsl_rev);
+	}
+
+	err = mpsl_radio_notification_cfg_set(MPSL_RADIO_NOTIFICATION_TYPE_INT_ON_BOTH,
+			 MPSL_RADIO_NOTIFICATION_DISTANCE_200US,
+			 QDEC_IRQn);
+	if (err) {
+		LOG_ERR("mpsl_radio_notification_cfg_set failed (err: %d)", err);
+	}
+
+	IRQ_CONNECT(DT_IRQN(DT_NODELABEL(qdec)), 5, radio_notify_cb, NULL, 0);
+	irq_enable(DT_IRQN(DT_NODELABEL(qdec)));
 
 	err = bt_enable(NULL);
 	if (err) {
@@ -121,8 +150,6 @@ void main(void)
 	}
 
 	LOG_INF("Bluetooth initialized");
-
-	k_sem_give(&ble_init_ok);
 
 	if (IS_ENABLED(CONFIG_SETTINGS)) {
 		settings_load();
