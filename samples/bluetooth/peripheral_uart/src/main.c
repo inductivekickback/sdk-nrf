@@ -98,10 +98,21 @@ static void conn_param_update(struct bt_conn *conn, uint16_t interval,
 		        interval, latency, timeout);
 }
 
+static bool conn_param_req(struct bt_conn *conn, struct bt_le_conn_param *param)
+{
+	LOG_INF("Connection params requested: interval (min=%d, max=%d), SL=%d",
+		        param->interval_min, param->interval_max, param->latency);
+	param->interval_min = 28;
+	param->interval_max = 28;
+	param->latency      = 0;
+	return true;
+}
+
 static struct bt_conn_cb conn_callbacks = {
 	.connected        = connected,
 	.disconnected     = disconnected,
 	.le_param_updated = conn_param_update,
+	.le_param_req     = conn_param_req,
 };
 
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
