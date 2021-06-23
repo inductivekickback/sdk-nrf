@@ -32,6 +32,10 @@
 
 #include <logging/log.h>
 
+#include <hal/nrf_gpio.h>
+
+#define RADIO_NOTIFICATION_PIN 2
+
 #define LOG_MODULE_NAME peripheral_uart
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
@@ -40,6 +44,8 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 static struct bt_conn *current_conn;
 static struct bt_conn *auth_conn;
+
+static mpsl_timeslot_session_id_t mpsl_session_id;
 
 static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -111,14 +117,54 @@ void error(void)
 	}
 }
 
+static mpsl_timeslot_signal_return_param_t no_action = {
+	.callback_action = MPSL_TIMESLOT_SIGNAL_ACTION_NONE
+};
+
+ static mpsl_timeslot_signal_return_param_t*
+ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
+ {
+ 	switch (signal) {
+ 	case MPSL_TIMESLOT_SIGNAL_START:
+ 		break;
+ 	case MPSL_TIMESLOT_SIGNAL_TIMER0:
+ 		break;
+ 	case MPSL_TIMESLOT_SIGNAL_RADIO:
+ 		break;
+ 	case MPSL_TIMESLOT_SIGNAL_EXTEND_FAILED:
+ 		break;
+ 	case MPSL_TIMESLOT_SIGNAL_EXTEND_SUCCEEDED:
+ 		break;
+ 	case MPSL_TIMESLOT_SIGNAL_BLOCKED:
+ 		break;
+ 	case MPSL_TIMESLOT_SIGNAL_CANCELLED:
+ 		break;
+ 	case MPSL_TIMESLOT_SIGNAL_SESSION_IDLE:
+ 		break;
+ 	case MPSL_TIMESLOT_SIGNAL_INVALID_RETURN:
+ 		break;
+ 	case MPSL_TIMESLOT_SIGNAL_SESSION_CLOSED:
+ 		break;
+ 	case MPSL_TIMESLOT_SIGNAL_OVERSTAYED:
+ 		break;
+ 	default:
+ 		break;
+ 	};
+
+ 	return &no_action;
+ }
+
 static void radio_notify_cb(const void *context)
 {
-	LOG_INF("QDEC_IRQHandler!");
+	nrf_gpio_pin_toggle(RADIO_NOTIFICATION_PIN);
 }
 
 void main(void)
 {
 	int err = 0;
+
+	nrf_gpio_cfg_output(RADIO_NOTIFICATION_PIN);
+	nrf_gpio_pin_clear(RADIO_NOTIFICATION_PIN);
 
 	bt_conn_cb_register(&conn_callbacks);
 
@@ -143,6 +189,11 @@ void main(void)
 
 	IRQ_CONNECT(DT_IRQN(DT_NODELABEL(qdec)), 5, radio_notify_cb, NULL, 0);
 	irq_enable(DT_IRQN(DT_NODELABEL(qdec)));
+
+	err = mpsl_timeslot_session_open(mpsl_cb, &mpsl_session_id);
+	if (err) {
+		LOG_ERR("mpsl_timeslot_session_open failed (err: %d)", err);
+	}
 
 	err = bt_enable(NULL);
 	if (err) {
