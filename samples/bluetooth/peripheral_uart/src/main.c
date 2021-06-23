@@ -170,12 +170,14 @@ void main(void)
 
 	if (!mpsl_is_initialized()) {
 		LOG_ERR("MPSL is not initialized");
+		error();
 	}
 
 	uint8_t mpsl_rev;
 	err = mpsl_build_revision_get(&mpsl_rev);
 	if (err) {
 		LOG_ERR("mpsl_build_revision_get failed (err: %d)", err);
+    	error();
 	} else {
 		LOG_INF("MPSL build rev: %d", mpsl_rev);
 	}
@@ -185,6 +187,7 @@ void main(void)
 			 QDEC_IRQn);
 	if (err) {
 		LOG_ERR("mpsl_radio_notification_cfg_set failed (err: %d)", err);
+    	error();
 	}
 
 	IRQ_CONNECT(DT_IRQN(DT_NODELABEL(qdec)), 5, radio_notify_cb, NULL, 0);
@@ -193,10 +196,12 @@ void main(void)
 	err = mpsl_timeslot_session_open(mpsl_cb, &mpsl_session_id);
 	if (err) {
 		LOG_ERR("mpsl_timeslot_session_open failed (err: %d)", err);
+		error();
 	}
 
 	err = bt_enable(NULL);
 	if (err) {
+		LOG_ERR("bt_enable failed (err: %d)", err);
 		error();
 	}
 
@@ -209,13 +214,14 @@ void main(void)
 	err = bt_nus_init(&nus_cb);
 	if (err) {
 		LOG_ERR("Failed to initialize UART service (err: %d)", err);
-		return;
+		error();
 	}
 
 	err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd,
 			      ARRAY_SIZE(sd));
 	if (err) {
 		LOG_ERR("Advertising failed to start (err %d)", err);
+		error();
 	}
 
 	for (;;) {
