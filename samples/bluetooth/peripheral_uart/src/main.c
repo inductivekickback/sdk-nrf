@@ -90,9 +90,18 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	}
 }
 
+static void conn_param_update(struct bt_conn *conn, uint16_t interval,
+				 uint16_t latency, uint16_t timeout)
+{
+	// NOTE: Will be called multiple times.
+	LOG_INF("Connection params updated: (interval=%d, SL=%d, timeout=%d)",
+		        interval, latency, timeout);
+}
+
 static struct bt_conn_cb conn_callbacks = {
-	.connected    = connected,
-	.disconnected = disconnected,
+	.connected        = connected,
+	.disconnected     = disconnected,
+	.le_param_updated = conn_param_update,
 };
 
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
