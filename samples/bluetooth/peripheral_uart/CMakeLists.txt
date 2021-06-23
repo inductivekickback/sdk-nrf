@@ -10,7 +10,7 @@ project(NONE)
 
 # NORDIC SDK APP START
 target_sources(app PRIVATE
-  src/main.c
+  src/*
 )
 # NORDIC SDK APP END
 
