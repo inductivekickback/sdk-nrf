@@ -24,7 +24,6 @@
 
 #include <mpsl.h>
 #include <mpsl_radio_notification.h>
-#include <mpsl_timeslot.h>
 
 #include <settings/settings.h>
 
@@ -33,6 +32,8 @@
 #include <logging/log.h>
 
 #include <hal/nrf_gpio.h>
+
+#include <proprietary_rf.h>
 
 #define RADIO_NOTIFICATION_PIN 2
 
@@ -45,7 +46,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 static struct bt_conn *current_conn;
 static struct bt_conn *auth_conn;
 
-static mpsl_timeslot_session_id_t mpsl_session_id;
+static uint16_t conn_interval;
 
 static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -88,12 +89,25 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 		bt_conn_unref(current_conn);
 		current_conn = NULL;
 	}
+
+	conn_interval = 0;
 }
 
 static void conn_param_update(struct bt_conn *conn, uint16_t interval,
 				 uint16_t latency, uint16_t timeout)
 {
-	// NOTE: Will be called multiple times.
+	// NOTE: May be called multiple times.
+
+	// TODO: Note the connection interval and open a session.
+	if (conn_interval) {
+		// This isn't the first conn_param_update.
+		// TODO: If the connection interval has changed then update proprietary_rf.
+		// TODO: If 
+	} else {
+		conn_interval = interval;
+		// TODO: Open proprietary_rf timeslot.
+	}
+
 	LOG_INF("Connection params updated: (interval=%d, SL=%d, timeout=%d)",
 		        interval, latency, timeout);
 }
@@ -125,8 +139,23 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
 	LOG_INF("Received data from: %s", log_strdup(addr));
 }
 
+static void bt_nus_enabled_cb(enum bt_nus_send_status status)
+{
+	switch (status) {
+	case BT_NUS_SEND_STATUS_ENABLED:
+		LOG_INF("NUS TX CCCD enabled");
+		break;
+	case BT_NUS_SEND_STATUS_DISABLED:
+		LOG_INF("NUX TX CCCD disabled");
+		break;
+	default:
+		break;
+	}
+}
+
 static struct bt_nus_cb nus_cb = {
-	.received = bt_receive_cb,
+	.received     = bt_receive_cb,
+	.send_enabled = bt_nus_enabled_cb,
 };
 
 void error(void)
@@ -136,43 +165,6 @@ void error(void)
 		k_sleep(K_MSEC(1000));
 	}
 }
-
-static mpsl_timeslot_signal_return_param_t no_action = {
-	.callback_action = MPSL_TIMESLOT_SIGNAL_ACTION_NONE
-};
-
- static mpsl_timeslot_signal_return_param_t*
- mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
- {
- 	switch (signal) {
- 	case MPSL_TIMESLOT_SIGNAL_START:
- 		break;
- 	case MPSL_TIMESLOT_SIGNAL_TIMER0:
- 		break;
- 	case MPSL_TIMESLOT_SIGNAL_RADIO:
- 		break;
- 	case MPSL_TIMESLOT_SIGNAL_EXTEND_FAILED:
- 		break;
- 	case MPSL_TIMESLOT_SIGNAL_EXTEND_SUCCEEDED:
- 		break;
- 	case MPSL_TIMESLOT_SIGNAL_BLOCKED:
- 		break;
- 	case MPSL_TIMESLOT_SIGNAL_CANCELLED:
- 		break;
- 	case MPSL_TIMESLOT_SIGNAL_SESSION_IDLE:
- 		break;
- 	case MPSL_TIMESLOT_SIGNAL_INVALID_RETURN:
- 		break;
- 	case MPSL_TIMESLOT_SIGNAL_SESSION_CLOSED:
- 		break;
- 	case MPSL_TIMESLOT_SIGNAL_OVERSTAYED:
- 		break;
- 	default:
- 		break;
- 	};
-
- 	return &no_action;
- }
 
 static void radio_notify_cb(const void *context)
 {
@@ -187,11 +179,6 @@ void main(void)
 	nrf_gpio_pin_clear(RADIO_NOTIFICATION_PIN);
 
 	bt_conn_cb_register(&conn_callbacks);
-
-	if (!mpsl_is_initialized()) {
-		LOG_ERR("MPSL is not initialized");
-		error();
-	}
 
 	uint8_t mpsl_rev;
 	err = mpsl_build_revision_get(&mpsl_rev);
@@ -213,9 +200,9 @@ void main(void)
 	IRQ_CONNECT(DT_IRQN(DT_NODELABEL(qdec)), 5, radio_notify_cb, NULL, 0);
 	irq_enable(DT_IRQN(DT_NODELABEL(qdec)));
 
-	err = mpsl_timeslot_session_open(mpsl_cb, &mpsl_session_id);
+	err = proprietary_rf_session_open();
 	if (err) {
-		LOG_ERR("mpsl_timeslot_session_open failed (err: %d)", err);
+		LOG_ERR("proprietary_rf_session_open failed (err: %d)", err);
 		error();
 	}
 

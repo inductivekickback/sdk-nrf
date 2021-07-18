@@ -11,6 +11,7 @@ project(NONE)
 # NORDIC SDK APP START
 FILE(GLOB app_sources src/*.c)
 target_sources(app PRIVATE ${app_sources})
+target_include_directories(app PRIVATE include)
 # NORDIC SDK APP END
 
 zephyr_library_include_directories(.)
