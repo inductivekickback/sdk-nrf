@@ -57,6 +57,14 @@ static const struct bt_data sd[] = {
 	BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_NUS_VAL),
 };
 
+void error(void)
+{
+	while (true) {
+		/* Spin for ever */
+		k_sleep(K_MSEC(1000));
+	}
+}
+
 static void connected(struct bt_conn *conn, uint8_t err)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
@@ -102,10 +110,13 @@ static void conn_param_update(struct bt_conn *conn, uint16_t interval,
 	if (conn_interval) {
 		// This isn't the first conn_param_update.
 		// TODO: If the connection interval has changed then update proprietary_rf.
-		// TODO: If 
 	} else {
-		conn_interval = interval;
-		// TODO: Open proprietary_rf timeslot.
+		conn_interval = (interval * 1250);
+		int err = proprietary_rf_timeslot_start(interval);
+		if (err) {
+			LOG_ERR("proprietary_rf_timeslot_start failed (err=%d)", err);
+			error();
+		}
 	}
 
 	LOG_INF("Connection params updated: (interval=%d, SL=%d, timeout=%d)",
@@ -157,14 +168,6 @@ static struct bt_nus_cb nus_cb = {
 	.received     = bt_receive_cb,
 	.send_enabled = bt_nus_enabled_cb,
 };
-
-void error(void)
-{
-	while (true) {
-		/* Spin for ever */
-		k_sleep(K_MSEC(1000));
-	}
-}
 
 static void radio_notify_cb(const void *context)
 {

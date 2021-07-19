@@ -13,6 +13,10 @@ extern "C" {
 
 int proprietary_rf_session_open(void);
 
+int proprietary_rf_timeslot_stop(void);
+
+int proprietary_rf_timeslot_start(uint16_t interval);
+
 #ifdef __cplusplus
 }
 #endif
