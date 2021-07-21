@@ -14,7 +14,7 @@
 
 #include <logging/log.h>
 
-#define LOG_MODULE_NAME proprietary_rf
+#define LOG_MODULE_NAME timeslot
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <mpsl.h>
@@ -23,7 +23,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <hal/nrf_gpio.h>
 #define TIMESLOT_PIN 4
 
-#include <proprietary_rf.h>
+#include <timeslot.h>
 
 #define TS_LEN_US           1500
 #define TS_TIMEOUT_LEN_US   1000000
@@ -48,11 +48,11 @@ static bool                timeslot_started;
 static bool                timeslot_stopping;
 static struct timeslot_cb *timeslot_callbacks;
 
-static struct k_poll_signal proprietary_rf_sig = K_POLL_SIGNAL_INITIALIZER(proprietary_rf_sig);
+static struct k_poll_signal timeslot_sig = K_POLL_SIGNAL_INITIALIZER(timeslot_sig);
 static struct k_poll_event  events[1] = {
     K_POLL_EVENT_STATIC_INITIALIZER(K_POLL_TYPE_SIGNAL,
                                     K_POLL_MODE_NOTIFY_ONLY,
-                                    &proprietary_rf_sig, 0),
+                                    &timeslot_sig, 0),
 };
 
 static mpsl_timeslot_session_id_t mpsl_session_id;
@@ -98,14 +98,14 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
              MPSL_TIMESLOT_SIGNAL_RADIO signals are called from an ISR at priority zero. */
 
     if (k_is_in_isr()) {
-        LOG_INF("In ISR");
+        LOG_DBG("In ISR");
     } else {
-        LOG_INF("Not in ISR");
+        LOG_DBG("Not in ISR");
     }
 
     switch (signal) {
     case MPSL_TIMESLOT_SIGNAL_START:
-        LOG_INF("MPSL_TIMESLOT_SIGNAL_START");
+        LOG_DBG("MPSL_TIMESLOT_SIGNAL_START");
         blocked_cancelled_count=0;
         nrf_gpio_pin_toggle(TIMESLOT_PIN);
 
@@ -119,49 +119,49 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
         NRF_TIMER0->CC[0]               = (TS_LEN_US - TS_SAFETY_MARGIN_US);
         NVIC_EnableIRQ(TIMER0_IRQn);
 
-        k_poll_signal_raise(&proprietary_rf_sig, SIGNAL_CODE_START);
+        k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_START);
         break;
     case MPSL_TIMESLOT_SIGNAL_TIMER0:
-        LOG_INF("MPSL_TIMESLOT_SIGNAL_TIMER0");
+        LOG_DBG("MPSL_TIMESLOT_SIGNAL_TIMER0");
         nrf_gpio_pin_toggle(TIMESLOT_PIN);
 
         if (timeslot_stopping) {
             return &action_end;
         } else {
-            k_poll_signal_raise(&proprietary_rf_sig, SIGNAL_CODE_TIMER0);
+            k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_TIMER0);
             request_normal.params.normal.distance_us = conn_interval_us;
             request_normal.params.normal.priority    = MPSL_TIMESLOT_PRIORITY_NORMAL;
             return &action_request_normal;
         }
     case MPSL_TIMESLOT_SIGNAL_RADIO:
-        LOG_INF("MPSL_TIMESLOT_SIGNAL_RADIO");
-#if TIMESLOT_USE_RADIO_IRQHANDLER
+        LOG_DBG("MPSL_TIMESLOT_SIGNAL_RADIO");
+#if TIMESLOT_CALLS_RADIO_IRQHANDLER
         RADIO_IRQHandler();
 #else
-        k_poll_signal_raise(&proprietary_rf_sig, SIGNAL_CODE_RADIO);
+        k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_RADIO);
 #endif
         break;
     case MPSL_TIMESLOT_SIGNAL_BLOCKED:
-        LOG_INF("MPSL_TIMESLOT_SIGNAL_BLOCKED");
+        LOG_DBG("MPSL_TIMESLOT_SIGNAL_BLOCKED");
         // TODO: Give a callback to the protocol to know that a timeslot was skipped.
         blocked_cancelled_count++;
         if (timeslot_stopping) {
             return &action_end;
         }
-        k_poll_signal_raise(&proprietary_rf_sig, SIGNAL_CODE_BLOCKED_CANCELLED);
+        k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_BLOCKED_CANCELLED);
         break;
         //return &action_request_normal;
     case MPSL_TIMESLOT_SIGNAL_CANCELLED:
-        LOG_INF("MPSL_TIMESLOT_SIGNAL_CANCELLED");
+        LOG_DBG("MPSL_TIMESLOT_SIGNAL_CANCELLED");
         // TODO: Give a callback to the protocol to konw that a timeslot was skipped.
         blocked_cancelled_count++;
         if (timeslot_stopping) {
             return &action_end;
         }
-        k_poll_signal_raise(&proprietary_rf_sig, SIGNAL_CODE_BLOCKED_CANCELLED);
+        k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_BLOCKED_CANCELLED);
         break;
     case MPSL_TIMESLOT_SIGNAL_SESSION_IDLE:
-        LOG_INF("MPSL_TIMESLOT_SIGNAL_SESSION_IDLE");
+        LOG_DBG("MPSL_TIMESLOT_SIGNAL_SESSION_IDLE");
         if (timeslot_stopping) {
             timeslot_stopping = false;
             timeslot_started  = false;
@@ -195,7 +195,7 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
     return &action_none;
 }
 
-int proprietary_rf_timeslot_stop(void)
+int timeslot_stop(void)
 {
     // TODO: This is async, use callback to notify.
     if (!session_open || !timeslot_started || timeslot_stopping) {
@@ -205,7 +205,7 @@ int proprietary_rf_timeslot_stop(void)
     return 0;
 }
 
-int proprietary_rf_timeslot_start(uint16_t interval_ms)
+int timeslot_start(uint16_t interval_ms)
 {
     // TODO: This is async, use callback to notify.
     if (!session_open || timeslot_started || timeslot_stopping) {
@@ -219,11 +219,33 @@ int proprietary_rf_timeslot_start(uint16_t interval_ms)
     return mpsl_timeslot_request(mpsl_session_id, &request_earliest);
 }
 
-int proprietary_rf_session_open(struct timeslot_cb *cb)
+int timeslot_open(struct timeslot_cb *cb)
 {
     if (session_open) {
         return -1;
     }
+
+    if (0 == cb) {
+        return -2;
+    }
+
+    if (0 == cb->error) {
+        return -2;
+    }
+
+    if (0 == cb->start) {
+        return -2;
+    }
+
+    if (0 == cb->stop) {
+        return -2;
+    }
+
+#if !TIMESLOT_CALLS_RADIO_IRQHANDLER
+    if (0 == cb->radio_irq) {
+        return -2;
+    }
+#endif
 
     timeslot_callbacks = cb;
 
@@ -239,33 +261,28 @@ int proprietary_rf_session_open(struct timeslot_cb *cb)
     return 0;
 }
 
-static void proprietary_rf_thread_fn(void)
+static void timeslot_thread_fn(void)
 {
     int err;
 
     while (true) {
-
         k_poll(events, 1, K_FOREVER);
 
         switch (events[0].signal->result) {
         case SIGNAL_CODE_START:
-            // TODO: Notify proprietary RF callback that timeslot has started.
+            timeslot_callbacks->start();
             break;
         case SIGNAL_CODE_TIMER0:
-            // TODO: Notify proprietary RF callback that timeslot is closing.
+            timeslot_callbacks->stop();
             break;
         case SIGNAL_CODE_RADIO:
-#if !TIMESLOT_USE_RADIO_IRQHANDLER
-            if (0 != timeslot_callbacks) {
-                if (0 != timeslot_callbacks->radio_irq) {
-                    timeslot_callbacks->radio_irq();
-                }
-            }
+#if !TIMESLOT_CALLS_RADIO_IRQHANDLER
+            timeslot_callbacks->radio_irq();
 #endif
             break;
         case SIGNAL_CODE_BLOCKED_CANCELLED:
             // TODO: Notify proprietary RF callback that blocked or cancelled (and count).
-            LOG_INF("SIGNAL_CODE_BLOCKED_CANCELLED");
+            LOG_DBG("SIGNAL_CODE_BLOCKED_CANCELLED");
             request_normal.params.normal.distance_us = (conn_interval_us * (blocked_cancelled_count+1));
             request_normal.params.normal.priority    = MPSL_TIMESLOT_PRIORITY_HIGH;
             err = mpsl_timeslot_request(mpsl_session_id, &request_normal);
@@ -275,10 +292,12 @@ static void proprietary_rf_thread_fn(void)
             }
             break;
         case SIGNAL_CODE_IDLE:
+            LOG_INF("SIGNAL_CODE_IDLE");
             // TODO: If stopping then either change conn_inteval or notify.
             break;
         default:
             /* Error */
+            timeslot_callbacks->error(-99);
             break;
         }
 
@@ -287,6 +306,6 @@ static void proprietary_rf_thread_fn(void)
     }
 }
 
-K_THREAD_DEFINE(proprietary_rf_thread, PROPRIETARY_RF_THREAD_STACK_SIZE,
-        proprietary_rf_thread_fn, NULL, NULL, NULL,
+K_THREAD_DEFINE(timeslot_thread, PROPRIETARY_RF_THREAD_STACK_SIZE,
+        timeslot_thread_fn, NULL, NULL, NULL,
         K_PRIO_COOP(PROPRIETARY_RF_THREAD_PRIORITY), 0, 0);

@@ -33,7 +33,7 @@
 
 #include <hal/nrf_gpio.h>
 
-#include <proprietary_rf.h>
+#include <timeslot.h>
 
 #define RADIO_NOTIFICATION_PIN 2
 
@@ -109,12 +109,12 @@ static void conn_param_update(struct bt_conn *conn, uint16_t interval,
 	// TODO: Note the connection interval and open a session.
 	if (conn_interval) {
 		// This isn't the first conn_param_update.
-		// TODO: If the connection interval has changed then update proprietary_rf.
+		// TODO: If the connection interval has changed then update timeslot.
 	} else {
 		conn_interval = (interval * 1250);
-		int err = proprietary_rf_timeslot_start(interval);
+		int err = timeslot_start(conn_interval);
 		if (err) {
-			LOG_ERR("proprietary_rf_timeslot_start failed (err=%d)", err);
+			LOG_ERR("timeslot_start failed (err=%d)", err);
 			error();
 		}
 	}
@@ -174,6 +174,38 @@ static void radio_notify_cb(const void *context)
 	nrf_gpio_pin_toggle(RADIO_NOTIFICATION_PIN);
 }
 
+static void timeslot_err_cb(int err)
+{
+	LOG_ERR("Timeslot session error: %d", err);
+	error();
+}
+
+static void timeslot_start_cb(void)
+{
+	LOG_DBG("Timeslot start");
+}
+
+static void timeslot_stop_cb(void)
+{
+	LOG_DBG("Timeslot stop");
+}
+
+#if !TIMESLOT_CALLS_RADIO_IRQHANDLER
+static void radio_irq_cb(void)
+{
+	LOG_DBG("Radio_IRQHandler");
+}
+#endif
+
+static struct timeslot_cb timeslot_callbacks = {
+    .error     = timeslot_err_cb,
+    .start     = timeslot_start_cb,
+    .stop      = timeslot_stop_cb,
+#if !TIMESLOT_CALLS_RADIO_IRQHANDLER
+    .radio_irq = radio_irq_cb
+#endif
+};
+
 void main(void)
 {
 	int err = 0;
@@ -203,9 +235,9 @@ void main(void)
 	IRQ_CONNECT(DT_IRQN(DT_NODELABEL(qdec)), 5, radio_notify_cb, NULL, 0);
 	irq_enable(DT_IRQN(DT_NODELABEL(qdec)));
 
-	err = proprietary_rf_session_open();
+	err = timeslot_open(&timeslot_callbacks);
 	if (err) {
-		LOG_ERR("proprietary_rf_session_open failed (err: %d)", err);
+		LOG_ERR("timeslot_open failed (err: %d)", err);
 		error();
 	}
 
