@@ -185,6 +185,11 @@ static void timeslot_start_cb(void)
 	LOG_DBG("Timeslot start");
 }
 
+static void timeslot_skipped_cb(uint8_t count)
+{
+	LOG_DBG("Timeslot skipped: %d", count);
+}
+
 static void timeslot_stop_cb(void)
 {
 	LOG_DBG("Timeslot stop");
@@ -200,6 +205,7 @@ static void radio_irq_cb(void)
 static struct timeslot_cb timeslot_callbacks = {
     .error     = timeslot_err_cb,
     .start     = timeslot_start_cb,
+    .skipped   = timeslot_skipped_cb,
     .stop      = timeslot_stop_cb,
 #if !TIMESLOT_CALLS_RADIO_IRQHANDLER
     .radio_irq = radio_irq_cb

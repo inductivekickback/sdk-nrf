@@ -6,8 +6,7 @@
 
 // TODO: Decide what timeslot length to use.
 //       Use the current conn_interval_us to decide basis.
-//       Use GPIO to measure
-//       Need a thread for firing up ESB and also performing started and stopped callbacks.
+//       How many skipped until it quits?
 
 #include <zephyr.h>
 #include <stdio.h>
@@ -25,10 +24,6 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <timeslot.h>
 
-#define TS_LEN_US           1500
-#define TS_TIMEOUT_LEN_US   1000000
-#define TS_SAFETY_MARGIN_US 100
-
 #define PROPRIETARY_RF_THREAD_STACK_SIZE 768
 #define PROPRIETARY_RF_THREAD_PRIORITY   5
 
@@ -38,7 +33,8 @@ enum SIGNAL_CODE
     SIGNAL_CODE_TIMER0            = 0x01,
     SIGNAL_CODE_RADIO             = 0x02,
     SIGNAL_CODE_BLOCKED_CANCELLED = 0x03,
-    SIGNAL_CODE_IDLE              = 0x04,
+    SIGNAL_CODE_OVERSTAYED        = 0x04,
+    SIGNAL_CODE_IDLE              = 0x05
 };
 
 static uint16_t            conn_interval_us;
@@ -97,15 +93,8 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
     /* NOTE: The MPSL_TIMESLOT_SIGNAL_START, MPSL_TIMESLOT_SIGNAL_TIMER0, and
              MPSL_TIMESLOT_SIGNAL_RADIO signals are called from an ISR at priority zero. */
 
-    if (k_is_in_isr()) {
-        LOG_DBG("In ISR");
-    } else {
-        LOG_DBG("Not in ISR");
-    }
-
     switch (signal) {
     case MPSL_TIMESLOT_SIGNAL_START:
-        LOG_DBG("MPSL_TIMESLOT_SIGNAL_START");
         blocked_cancelled_count=0;
         nrf_gpio_pin_toggle(TIMESLOT_PIN);
 
@@ -122,7 +111,6 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
         k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_START);
         break;
     case MPSL_TIMESLOT_SIGNAL_TIMER0:
-        LOG_DBG("MPSL_TIMESLOT_SIGNAL_TIMER0");
         nrf_gpio_pin_toggle(TIMESLOT_PIN);
 
         if (timeslot_stopping) {
@@ -134,7 +122,6 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
             return &action_request_normal;
         }
     case MPSL_TIMESLOT_SIGNAL_RADIO:
-        LOG_DBG("MPSL_TIMESLOT_SIGNAL_RADIO");
 #if TIMESLOT_CALLS_RADIO_IRQHANDLER
         RADIO_IRQHandler();
 #else
@@ -142,8 +129,6 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
 #endif
         break;
     case MPSL_TIMESLOT_SIGNAL_BLOCKED:
-        LOG_DBG("MPSL_TIMESLOT_SIGNAL_BLOCKED");
-        // TODO: Give a callback to the protocol to know that a timeslot was skipped.
         blocked_cancelled_count++;
         if (timeslot_stopping) {
             return &action_end;
@@ -152,8 +137,6 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
         break;
         //return &action_request_normal;
     case MPSL_TIMESLOT_SIGNAL_CANCELLED:
-        LOG_DBG("MPSL_TIMESLOT_SIGNAL_CANCELLED");
-        // TODO: Give a callback to the protocol to konw that a timeslot was skipped.
         blocked_cancelled_count++;
         if (timeslot_stopping) {
             return &action_end;
@@ -186,7 +169,7 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
         break;
     case MPSL_TIMESLOT_SIGNAL_OVERSTAYED:
         LOG_ERR("MPSL_TIMESLOT_SIGNAL_OVERSTAYED");
-        // TODO: Give an error callback?
+        k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_OVERSTAYED);
         break;
     default:
         break;
@@ -275,28 +258,31 @@ static void timeslot_thread_fn(void)
         case SIGNAL_CODE_TIMER0:
             timeslot_callbacks->stop();
             break;
-        case SIGNAL_CODE_RADIO:
 #if !TIMESLOT_CALLS_RADIO_IRQHANDLER
+        case SIGNAL_CODE_RADIO:
             timeslot_callbacks->radio_irq();
-#endif
             break;
+#endif
         case SIGNAL_CODE_BLOCKED_CANCELLED:
-            // TODO: Notify proprietary RF callback that blocked or cancelled (and count).
             LOG_DBG("SIGNAL_CODE_BLOCKED_CANCELLED");
             request_normal.params.normal.distance_us = (conn_interval_us * (blocked_cancelled_count+1));
             request_normal.params.normal.priority    = MPSL_TIMESLOT_PRIORITY_HIGH;
             err = mpsl_timeslot_request(mpsl_session_id, &request_normal);
             if (err) {
-                // TODO: Notify error callback?
-                LOG_ERR("mpsl_timeslot_request failed (err=%d)", err);
+                timeslot_started  = false;
+                timeslot_stopping = false;
+                timeslot_callbacks->error(err);
             }
+            timeslot_callbacks->skipped(blocked_cancelled_count);
             break;
         case SIGNAL_CODE_IDLE:
             LOG_INF("SIGNAL_CODE_IDLE");
             // TODO: If stopping then either change conn_inteval or notify.
             break;
+        case SIGNAL_CODE_OVERSTAYED:
+            timeslot_callbacks->error(-98);
+            break;
         default:
-            /* Error */
             timeslot_callbacks->error(-99);
             break;
         }
