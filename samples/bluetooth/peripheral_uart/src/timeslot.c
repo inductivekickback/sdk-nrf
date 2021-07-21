@@ -182,7 +182,7 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
 
 int timeslot_stop(void)
 {
-    if (!session_open || !timeslot_started || timeslot_stopping) {
+    if (!session_open || !timeslot_started) {
         return -1;
     }
     timeslot_stopping = true;
@@ -191,11 +191,11 @@ int timeslot_stop(void)
 
 int timeslot_start(uint32_t len_us, uint32_t interval_us)
 {
-    LOG_INF("timeslot_start (len_us: %d, interval_us: %d)", len_us, interval_us);
     if (!session_open || timeslot_started || timeslot_stopping) {
         return -1;
     }
 
+    LOG_INF("timeslot_start (len_us: %d, interval_us: %d)", len_us, interval_us);
     ts_len_us               = len_us;
     conn_interval_us        = interval_us;
     blocked_cancelled_count = 0;

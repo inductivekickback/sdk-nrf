@@ -128,7 +128,11 @@ static void conn_param_update(struct bt_conn *conn, uint16_t interval,
         if (conn_interval != interval) {
             LOG_INF("Stopping current timeslots");
             next_interval = interval;
-            timeslot_stop();
+            int err = timeslot_stop();
+            if (err) {
+                LOG_ERR("timeslot_stop failed (err=%d)", err);
+                error();
+            }
         }
     } else {
         timeslots_start(interval);
