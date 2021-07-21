@@ -11,7 +11,6 @@
 extern "C" {
 #endif
 
-#define TS_LEN_US            1500
 #define TS_TIMEOUT_LEN_US    1000000
 #define TS_SAFETY_MARGIN_US  100
 #define TS_SKIPPED_TOLERANCE 10
@@ -30,15 +29,20 @@ struct timeslot_cb {
     void (*start)(void);
 
     /**
+     * Called TS_SAFETY_MARGIN_US before the end of every timeslot.
+     */
+    void (*end)(void);
+
+    /**
      * A timeslot has been blocked or cancelled. The count parameter is set to the number
      * of consecutive timeslots that have been skipped.
      */
     void (*skipped)(uint8_t count);
 
     /**
-     * Called TS_SAFETY_MARGIN_US the end of every timeslot.
+     * The recurring timeslot has been stopped (the session is idle).
      */
-    void (*stop)(void);
+    void (*stopped)(void);
 
 #if !TIMESLOT_USE_RADIO_IRQHANDLER
     /**
@@ -60,15 +64,10 @@ int timeslot_open(struct timeslot_cb *cb);
 /**
  * Request a recurring timeslot based on the given interval.
  */
-int timeslot_start(uint16_t interval_ms);
+int timeslot_start(uint32_t len_us, uint32_t interval_us);
 
 /**
- * Stop the current, recurring timeslot and start it again with the new interval.
- */
-int timeslot_change_interval(uint16_t interval_ms);
-
-/**
- * Stop the recurring timeslot.
+ * Stop requesting the recurring timeslot.
  */
 int timeslot_stop(void);
 

@@ -19,8 +19,12 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <mpsl.h>
 #include <mpsl_timeslot.h>
 
+#define TS_GPIO_DEBUG 1
+
+#if TS_GPIO_DEBUG
 #include <hal/nrf_gpio.h>
 #define TIMESLOT_PIN 4
+#endif
 
 #include <timeslot.h>
 
@@ -34,10 +38,12 @@ enum SIGNAL_CODE
     SIGNAL_CODE_RADIO             = 0x02,
     SIGNAL_CODE_BLOCKED_CANCELLED = 0x03,
     SIGNAL_CODE_OVERSTAYED        = 0x04,
-    SIGNAL_CODE_IDLE              = 0x05
+    SIGNAL_CODE_IDLE              = 0x05,
+    SIGNAL_CODE_UNEXPECTED        = 0x06
 };
 
-static uint16_t            conn_interval_us;
+static uint32_t            conn_interval_us;
+static uint32_t            ts_len_us;
 static uint8_t             blocked_cancelled_count;
 static bool                session_open;
 static bool                timeslot_started;
@@ -59,7 +65,7 @@ static mpsl_timeslot_request_t request_earliest = {
     .params.earliest = {
         .hfclk      = MPSL_TIMESLOT_HFCLK_CFG_XTAL_GUARANTEED,
         .priority   = MPSL_TIMESLOT_PRIORITY_NORMAL,
-        .length_us  = TS_LEN_US,
+        .length_us  = 0,
         .timeout_us = TS_TIMEOUT_LEN_US
     }
 };
@@ -69,7 +75,7 @@ static mpsl_timeslot_request_t request_normal = {
     .params.normal = {
         .hfclk       = MPSL_TIMESLOT_HFCLK_CFG_XTAL_GUARANTEED,
         .priority    = MPSL_TIMESLOT_PRIORITY_NORMAL,
-        .length_us   = TS_LEN_US,
+        .length_us   = 0,
         .distance_us = 0
     }
 };
@@ -90,44 +96,49 @@ static mpsl_timeslot_signal_return_param_t action_request_normal = {
 static mpsl_timeslot_signal_return_param_t*
 mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
 {
-    /* NOTE: The MPSL_TIMESLOT_SIGNAL_START, MPSL_TIMESLOT_SIGNAL_TIMER0, and
-             MPSL_TIMESLOT_SIGNAL_RADIO signals are called from an ISR at priority zero. */
-
+    /**
+     *  NOTE: The MPSL_TIMESLOT_SIGNAL_START, MPSL_TIMESLOT_SIGNAL_TIMER0, and
+     *        MPSL_TIMESLOT_SIGNAL_RADIO signals are called from an ISR at priority zero.
+     */
     switch (signal) {
     case MPSL_TIMESLOT_SIGNAL_START:
         blocked_cancelled_count=0;
+#if TS_GPIO_DEBUG
         nrf_gpio_pin_toggle(TIMESLOT_PIN);
-
+#endif
         if (timeslot_stopping) {
             return &action_end;
         }
-
         /* TIMER0 is pre-configured for 1MHz mode by the MPSL. */
-        NRF_TIMER0->INTENSET            = (TIMER_INTENSET_COMPARE0_Set <<
-                                               TIMER_INTENSET_COMPARE0_Pos);
-        NRF_TIMER0->CC[0]               = (TS_LEN_US - TS_SAFETY_MARGIN_US);
+        NRF_TIMER0->INTENSET = (TIMER_INTENSET_COMPARE0_Set << TIMER_INTENSET_COMPARE0_Pos);
+        NRF_TIMER0->CC[0]    = (ts_len_us - TS_SAFETY_MARGIN_US);
         NVIC_EnableIRQ(TIMER0_IRQn);
-
         k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_START);
         break;
-    case MPSL_TIMESLOT_SIGNAL_TIMER0:
-        nrf_gpio_pin_toggle(TIMESLOT_PIN);
 
+    case MPSL_TIMESLOT_SIGNAL_TIMER0:
+#if TS_GPIO_DEBUG
+        nrf_gpio_pin_toggle(TIMESLOT_PIN);
+#endif
         if (timeslot_stopping) {
             return &action_end;
-        } else {
-            k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_TIMER0);
-            request_normal.params.normal.distance_us = conn_interval_us;
-            request_normal.params.normal.priority    = MPSL_TIMESLOT_PRIORITY_NORMAL;
-            return &action_request_normal;
         }
+        k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_TIMER0);
+        request_normal.params.normal.distance_us = conn_interval_us;
+        request_normal.params.normal.priority    = MPSL_TIMESLOT_PRIORITY_NORMAL;
+        return &action_request_normal;
+
     case MPSL_TIMESLOT_SIGNAL_RADIO:
+        if (timeslot_stopping) {
+            return &action_end;
+        }
 #if TIMESLOT_CALLS_RADIO_IRQHANDLER
         RADIO_IRQHandler();
 #else
         k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_RADIO);
 #endif
         break;
+
     case MPSL_TIMESLOT_SIGNAL_BLOCKED:
         blocked_cancelled_count++;
         if (timeslot_stopping) {
@@ -135,7 +146,7 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
         }
         k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_BLOCKED_CANCELLED);
         break;
-        //return &action_request_normal;
+
     case MPSL_TIMESLOT_SIGNAL_CANCELLED:
         blocked_cancelled_count++;
         if (timeslot_stopping) {
@@ -143,34 +154,25 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
         }
         k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_BLOCKED_CANCELLED);
         break;
-    case MPSL_TIMESLOT_SIGNAL_SESSION_IDLE:
-        LOG_DBG("MPSL_TIMESLOT_SIGNAL_SESSION_IDLE");
-        if (timeslot_stopping) {
-            timeslot_stopping = false;
-            timeslot_started  = false;
 
-            // TODO: If conn_interval_us changed then re-request.
-        } else {
-            LOG_ERR("MPSL_TIMESLOT_SIGNAL_SESSION_IDLE");
-        }
+    case MPSL_TIMESLOT_SIGNAL_SESSION_IDLE:
+        k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_IDLE);
         break;
+
     case MPSL_TIMESLOT_SIGNAL_EXTEND_FAILED:
-        /* Not used. */
-        break;
+        /* Intentional fall-through */
     case MPSL_TIMESLOT_SIGNAL_EXTEND_SUCCEEDED:
-        /* Not used. */
-        break;
+        /* Intentional fall-through */
     case MPSL_TIMESLOT_SIGNAL_INVALID_RETURN:
-        LOG_ERR("MPSL_TIMESLOT_SIGNAL_INVALID_RETURN");
-        break;
+        /* Intentional fall-through */
     case MPSL_TIMESLOT_SIGNAL_SESSION_CLOSED:
-        LOG_ERR("MPSL_TIMESLOT_SIGNAL_SESSION_CLOSED");
-        // TODO: Handle closing a session?
+        k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_UNEXPECTED);
         break;
+
     case MPSL_TIMESLOT_SIGNAL_OVERSTAYED:
-        LOG_ERR("MPSL_TIMESLOT_SIGNAL_OVERSTAYED");
         k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_OVERSTAYED);
         break;
+
     default:
         break;
     };
@@ -180,7 +182,6 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
 
 int timeslot_stop(void)
 {
-    // TODO: This is async, use callback to notify.
     if (!session_open || !timeslot_started || timeslot_stopping) {
         return -1;
     }
@@ -188,16 +189,20 @@ int timeslot_stop(void)
     return 0;
 }
 
-int timeslot_start(uint16_t interval_ms)
+int timeslot_start(uint32_t len_us, uint32_t interval_us)
 {
-    // TODO: This is async, use callback to notify.
+    LOG_INF("timeslot_start (len_us: %d, interval_us: %d)", len_us, interval_us);
     if (!session_open || timeslot_started || timeslot_stopping) {
         return -1;
     }
 
-    conn_interval_us        = (interval_ms * 1000);
+    ts_len_us               = len_us;
+    conn_interval_us        = interval_us;
     blocked_cancelled_count = 0;
     timeslot_started        = true;
+
+    request_normal.params.normal.length_us     = len_us;
+    request_earliest.params.earliest.length_us = len_us;
 
     return mpsl_timeslot_request(mpsl_session_id, &request_earliest);
 }
@@ -207,23 +212,9 @@ int timeslot_open(struct timeslot_cb *cb)
     if (session_open) {
         return -1;
     }
-
-    if (0 == cb) {
+    if ((0 == cb) || (0 == cb->error) || (0 == cb->start) || (0 == cb->end)) {
         return -2;
     }
-
-    if (0 == cb->error) {
-        return -2;
-    }
-
-    if (0 == cb->start) {
-        return -2;
-    }
-
-    if (0 == cb->stop) {
-        return -2;
-    }
-
 #if !TIMESLOT_CALLS_RADIO_IRQHANDLER
     if (0 == cb->radio_irq) {
         return -2;
@@ -237,8 +228,10 @@ int timeslot_open(struct timeslot_cb *cb)
         return err;
     }
 
+#if TS_GPIO_DEBUG
     nrf_gpio_cfg_output(TIMESLOT_PIN);
     nrf_gpio_pin_clear(TIMESLOT_PIN);
+#endif
 
     session_open = true;
     return 0;
@@ -255,16 +248,23 @@ static void timeslot_thread_fn(void)
         case SIGNAL_CODE_START:
             timeslot_callbacks->start();
             break;
+
         case SIGNAL_CODE_TIMER0:
-            timeslot_callbacks->stop();
+            timeslot_callbacks->end();
             break;
+
 #if !TIMESLOT_CALLS_RADIO_IRQHANDLER
         case SIGNAL_CODE_RADIO:
             timeslot_callbacks->radio_irq();
             break;
 #endif
+
         case SIGNAL_CODE_BLOCKED_CANCELLED:
             LOG_DBG("SIGNAL_CODE_BLOCKED_CANCELLED");
+            if (blocked_cancelled_count > TS_SKIPPED_TOLERANCE) {
+                timeslot_callbacks->error(-95);
+                return;
+            }
             request_normal.params.normal.distance_us = (conn_interval_us * (blocked_cancelled_count+1));
             request_normal.params.normal.priority    = MPSL_TIMESLOT_PRIORITY_HIGH;
             err = mpsl_timeslot_request(mpsl_session_id, &request_normal);
@@ -275,13 +275,29 @@ static void timeslot_thread_fn(void)
             }
             timeslot_callbacks->skipped(blocked_cancelled_count);
             break;
+
         case SIGNAL_CODE_IDLE:
             LOG_INF("SIGNAL_CODE_IDLE");
-            // TODO: If stopping then either change conn_inteval or notify.
+            if (timeslot_stopping) {
+                timeslot_stopping = false;
+                timeslot_started  = false;
+                timeslot_callbacks->stopped();
+            } else {
+                /* Session ended unexpectedly */
+                timeslot_callbacks->error(-96);
+            }
             break;
+
         case SIGNAL_CODE_OVERSTAYED:
+            /* This is the most probable of the what-could-go-wrong scenarios. */
+            timeslot_callbacks->error(-97);
+            break;
+
+        case SIGNAL_CODE_UNEXPECTED:
+            /* Something like MPSL_TIMESLOT_SIGNAL_INVALID_RETURN happened. */
             timeslot_callbacks->error(-98);
             break;
+
         default:
             timeslot_callbacks->error(-99);
             break;
@@ -293,5 +309,5 @@ static void timeslot_thread_fn(void)
 }
 
 K_THREAD_DEFINE(timeslot_thread, PROPRIETARY_RF_THREAD_STACK_SIZE,
-        timeslot_thread_fn, NULL, NULL, NULL,
-        K_PRIO_COOP(PROPRIETARY_RF_THREAD_PRIORITY), 0, 0);
+                    timeslot_thread_fn, NULL, NULL, NULL,
+                    K_PRIO_COOP(PROPRIETARY_RF_THREAD_PRIORITY), 0, 0);
