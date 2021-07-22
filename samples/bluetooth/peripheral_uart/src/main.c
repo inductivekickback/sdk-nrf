@@ -52,6 +52,7 @@ static struct bt_conn *auth_conn;
 
 static uint16_t conn_interval;
 static uint16_t next_interval;
+static bool     ts_ready_to_open;
 
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -135,7 +136,8 @@ static void conn_param_update(struct bt_conn *conn, uint16_t interval,
             }
         }
     } else {
-        timeslots_start(interval);
+        next_interval    = interval;
+        ts_ready_to_open = true;
     }
 }
 
@@ -187,7 +189,15 @@ static struct bt_nus_cb nus_cb = {
 
 static void radio_notify_cb(const void *context)
 {
+    static bool active;
+
+    active = !active;
     nrf_gpio_pin_toggle(RADIO_NOTIFICATION_PIN);
+
+    if (!active && ts_ready_to_open) {
+        ts_ready_to_open = false;
+        timeslots_start(next_interval);
+    }
 }
 
 static void timeslot_err_cb(int err)
@@ -215,7 +225,7 @@ static void timeslot_stopped_cb(void)
 {
     LOG_DBG("Timeslot stopped");
     if (next_interval != conn_interval) {
-        timeslots_start(next_interval);
+        ts_ready_to_open = true;
     }
 }
 

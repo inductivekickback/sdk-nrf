@@ -35,7 +35,8 @@ enum SIGNAL_CODE
     SIGNAL_CODE_BLOCKED_CANCELLED = 0x03,
     SIGNAL_CODE_OVERSTAYED        = 0x04,
     SIGNAL_CODE_IDLE              = 0x05,
-    SIGNAL_CODE_UNEXPECTED        = 0x06
+    SIGNAL_CODE_UNEXPECTED        = 0x06,
+    SIGNAL_CODE_START_FROM_ISR    = 0x07
 };
 
 static uint32_t                conn_interval_us;
@@ -192,7 +193,13 @@ int timeslot_start(uint32_t len_us, uint32_t interval_us)
     request_normal.params.normal.length_us     = len_us;
     request_earliest.params.earliest.length_us = len_us;
 
-    return mpsl_timeslot_request(mpsl_session_id, &request_earliest);
+    if (!k_is_in_isr()) {
+        LOG_INF("Not in ISR");
+        return mpsl_timeslot_request(mpsl_session_id, &request_earliest);
+    }
+
+    k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_START_FROM_ISR);
+    return 0;
 }
 
 int timeslot_open(struct timeslot_config *config, struct timeslot_cb *cb)
@@ -294,6 +301,15 @@ static void timeslot_thread_fn(void)
         case SIGNAL_CODE_UNEXPECTED:
             /* Something like MPSL_TIMESLOT_SIGNAL_INVALID_RETURN happened. */
             timeslot_callbacks->error(-98);
+            break;
+
+        case SIGNAL_CODE_START_FROM_ISR:
+            err = mpsl_timeslot_request(mpsl_session_id, &request_earliest);
+            if (err) {
+                timeslot_started  = false;
+                timeslot_stopping = false;
+                timeslot_callbacks->error(err);
+            }
             break;
 
         default:
