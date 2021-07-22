@@ -237,6 +237,8 @@ static struct timeslot_cb timeslot_callbacks = {
 #endif
 };
 
+static struct timeslot_config timeslot_config = TS_DEFAULT_CONFIG;
+
 void main(void)
 {
     int err = 0;
@@ -266,7 +268,7 @@ void main(void)
     IRQ_CONNECT(DT_IRQN(DT_NODELABEL(qdec)), 5, radio_notify_cb, NULL, 0);
     irq_enable(DT_IRQN(DT_NODELABEL(qdec)));
 
-    err = timeslot_open(&timeslot_callbacks);
+    err = timeslot_open(&timeslot_config, &timeslot_callbacks);
     if (err) {
         LOG_ERR("timeslot_open failed (err: %d)", err);
         error();

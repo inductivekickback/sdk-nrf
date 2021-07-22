@@ -4,10 +4,6 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-// TODO: Decide what timeslot length to use.
-//       Use the current conn_interval_us to decide basis.
-//       How many skipped until it quits?
-
 #include <zephyr.h>
 #include <stdio.h>
 
@@ -42,13 +38,14 @@ enum SIGNAL_CODE
     SIGNAL_CODE_UNEXPECTED        = 0x06
 };
 
-static uint32_t            conn_interval_us;
-static uint32_t            ts_len_us;
-static uint8_t             blocked_cancelled_count;
-static bool                session_open;
-static bool                timeslot_started;
-static bool                timeslot_stopping;
-static struct timeslot_cb *timeslot_callbacks;
+static uint32_t                conn_interval_us;
+static uint32_t                ts_len_us;
+static uint8_t                 blocked_cancelled_count;
+static bool                    session_open;
+static bool                    timeslot_started;
+static bool                    timeslot_stopping;
+static struct timeslot_config *timeslot_config;
+static struct timeslot_cb     *timeslot_callbacks;
 
 static struct k_poll_signal timeslot_sig = K_POLL_SIGNAL_INITIALIZER(timeslot_sig);
 static struct k_poll_event  events[1] = {
@@ -63,21 +60,12 @@ static mpsl_timeslot_session_id_t mpsl_session_id;
 static mpsl_timeslot_request_t request_earliest = {
     .request_type = MPSL_TIMESLOT_REQ_TYPE_EARLIEST,
     .params.earliest = {
-        .hfclk      = MPSL_TIMESLOT_HFCLK_CFG_XTAL_GUARANTEED,
         .priority   = MPSL_TIMESLOT_PRIORITY_NORMAL,
-        .length_us  = 0,
-        .timeout_us = TS_TIMEOUT_LEN_US
     }
 };
 
 static mpsl_timeslot_request_t request_normal = {
-    .request_type = MPSL_TIMESLOT_REQ_TYPE_NORMAL,
-    .params.normal = {
-        .hfclk       = MPSL_TIMESLOT_HFCLK_CFG_XTAL_GUARANTEED,
-        .priority    = MPSL_TIMESLOT_PRIORITY_NORMAL,
-        .length_us   = 0,
-        .distance_us = 0
-    }
+    .request_type = MPSL_TIMESLOT_REQ_TYPE_NORMAL
 };
 
 static mpsl_timeslot_signal_return_param_t action_none = {
@@ -104,21 +92,21 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
     case MPSL_TIMESLOT_SIGNAL_START:
         blocked_cancelled_count=0;
 #if TS_GPIO_DEBUG
-        nrf_gpio_pin_toggle(TIMESLOT_PIN);
+        nrf_gpio_pin_write(TIMESLOT_PIN, 1);
 #endif
         if (timeslot_stopping) {
             return &action_end;
         }
         /* TIMER0 is pre-configured for 1MHz mode by the MPSL. */
         NRF_TIMER0->INTENSET = (TIMER_INTENSET_COMPARE0_Set << TIMER_INTENSET_COMPARE0_Pos);
-        NRF_TIMER0->CC[0]    = (ts_len_us - TS_SAFETY_MARGIN_US);
+        NRF_TIMER0->CC[0]    = (ts_len_us - timeslot_config->safety_margin_us);
         NVIC_EnableIRQ(TIMER0_IRQn);
         k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_START);
         break;
 
     case MPSL_TIMESLOT_SIGNAL_TIMER0:
 #if TS_GPIO_DEBUG
-        nrf_gpio_pin_toggle(TIMESLOT_PIN);
+        nrf_gpio_pin_write(TIMESLOT_PIN, 0);
 #endif
         if (timeslot_stopping) {
             return &action_end;
@@ -207,11 +195,16 @@ int timeslot_start(uint32_t len_us, uint32_t interval_us)
     return mpsl_timeslot_request(mpsl_session_id, &request_earliest);
 }
 
-int timeslot_open(struct timeslot_cb *cb)
+int timeslot_open(struct timeslot_config *config, struct timeslot_cb *cb)
 {
     if (session_open) {
         return -1;
     }
+
+    if (0 == config) {
+        return -2;
+    }
+
     if ((0 == cb) || (0 == cb->error) || (0 == cb->start) || (0 == cb->end)) {
         return -2;
     }
@@ -221,7 +214,12 @@ int timeslot_open(struct timeslot_cb *cb)
     }
 #endif
 
+    timeslot_config    = config;
     timeslot_callbacks = cb;
+
+    request_normal.params.normal.hfclk          = timeslot_config->hfclk;
+    request_earliest.params.earliest.hfclk      = timeslot_config->hfclk;
+    request_earliest.params.earliest.timeout_us = timeslot_config->timeout_us;
 
     int err = mpsl_timeslot_session_open(mpsl_cb, &mpsl_session_id);
     if (err) {
@@ -261,7 +259,7 @@ static void timeslot_thread_fn(void)
 
         case SIGNAL_CODE_BLOCKED_CANCELLED:
             LOG_DBG("SIGNAL_CODE_BLOCKED_CANCELLED");
-            if (blocked_cancelled_count > TS_SKIPPED_TOLERANCE) {
+            if (blocked_cancelled_count > timeslot_config->skipped_tolerance) {
                 timeslot_callbacks->error(-95);
                 return;
             }

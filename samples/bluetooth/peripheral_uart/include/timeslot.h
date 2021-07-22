@@ -11,9 +11,7 @@
 extern "C" {
 #endif
 
-#define TS_TIMEOUT_LEN_US    1000000
-#define TS_SAFETY_MARGIN_US  100
-#define TS_SKIPPED_TOLERANCE 10
+#include <mpsl_timeslot.h>
 
 #define TIMESLOT_CALLS_RADIO_IRQHANDLER 0
 
@@ -21,23 +19,29 @@ struct timeslot_config {
     /**
      * High frequency clock source, see MPSL_TIMESLOT_HFCLK_CFG.
      */
-    uint8_t       hfclk;        
-
-    /**
-     * The timeslot length, see MPSL_TIMESLOT_LENGTH_MIN_US and MPSL_TIMESLOT_LENGTH_MAX_US.
-     */
-    uint32_t      length_us;    
+    uint8_t  hfclk;        
 
     /**
      * Amount of time before a request times out.
      */
-    uint32_t      timeout_us;
+    uint32_t timeout_us;
+
+    /**
+     * Close the timeslot this amount of time before the end to ensure that it closes cleanly.
+     */
+    uint32_t  safety_margin_us;
+
+    /**
+     * The number of skipped timeslots before an error is raised.
+     */
+    uint8_t   skipped_tolerance;
 };
 
 #define TS_DEFAULT_CONFIG { \
-    .hfclk      = MPSL_TIMESLOT_HFCLK_CFG_XTAL_GUARANTEED, \
-    .length_us  = 2000000, \
-    .timeout_us = 2000000 \
+    .hfclk             = MPSL_TIMESLOT_HFCLK_CFG_XTAL_GUARANTEED, \
+    .timeout_us        = 2000000, /* Default is 2s. If too low then request will return -35. */ \
+    .safety_margin_us  = 100, /* Default is 100us */ \
+    .skipped_tolerance = 10 /* Default is 10 */ \
 }
 
 struct timeslot_cb {
@@ -82,7 +86,7 @@ struct timeslot_cb {
  * Opening a session is always the first step and there's no obvious
  * reason to ever close the session.
  */
-int timeslot_open(struct timeslot_cb *cb); // TODO: Include config
+int timeslot_open(struct timeslot_config *config, struct timeslot_cb *cb);
 
 /**
  * Request a recurring timeslot based on the given interval.
