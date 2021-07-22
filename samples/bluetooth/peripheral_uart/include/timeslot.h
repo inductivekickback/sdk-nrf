@@ -17,6 +17,29 @@ extern "C" {
 
 #define TIMESLOT_CALLS_RADIO_IRQHANDLER 0
 
+struct timeslot_config {
+    /**
+     * High frequency clock source, see MPSL_TIMESLOT_HFCLK_CFG.
+     */
+    uint8_t       hfclk;        
+
+    /**
+     * The timeslot length, see MPSL_TIMESLOT_LENGTH_MIN_US and MPSL_TIMESLOT_LENGTH_MAX_US.
+     */
+    uint32_t      length_us;    
+
+    /**
+     * Amount of time before a request times out.
+     */
+    uint32_t      timeout_us;
+};
+
+#define TS_DEFAULT_CONFIG { \
+    .hfclk      = MPSL_TIMESLOT_HFCLK_CFG_XTAL_GUARANTEED, \
+    .length_us  = 2000000, \
+    .timeout_us = 2000000 \
+}
+
 struct timeslot_cb {
     /**
      * A (potentially unrecoverable) error has occurred.
@@ -59,7 +82,7 @@ struct timeslot_cb {
  * Opening a session is always the first step and there's no obvious
  * reason to ever close the session.
  */
-int timeslot_open(struct timeslot_cb *cb);
+int timeslot_open(struct timeslot_cb *cb); // TODO: Include config
 
 /**
  * Request a recurring timeslot based on the given interval.

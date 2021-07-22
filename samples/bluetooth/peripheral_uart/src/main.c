@@ -35,7 +35,7 @@
 
 #include <timeslot.h>
 
-#define CI_TO_US(ci) ((ci) * 1250 * 1000)
+#define CI_TO_US(ci_ms) ((ci_ms) * 1250)
 
 #define TS_LEN_US 1500
 
@@ -64,6 +64,7 @@ static const struct bt_data sd[] = {
 
 void error(void)
 {
+    LOG_ERR("Error handler");
     while (true) {
         /* Spin for ever */
         k_sleep(K_MSEC(1000));
@@ -108,7 +109,6 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 
 static void timeslots_start(uint16_t interval)
 {
-    LOG_INF("timeslots_start (len_us: %d, (raw) interval: %d, interval: %d)", TS_LEN_US, interval, CI_TO_US(interval));
     conn_interval = interval;
     int err = timeslot_start(TS_LEN_US, CI_TO_US(interval));
     if (err) {
