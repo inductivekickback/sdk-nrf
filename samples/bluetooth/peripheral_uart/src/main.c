@@ -35,11 +35,12 @@
 
 #include <timeslot.h>
 
-#define CI_TO_US(ci_ms) ((ci_ms) * 1250)
-
 #define TS_LEN_US 1500
 
+#define CI_TO_US(ci_ms) (1250UL * (ci_ms))
+
 #define RADIO_NOTIFICATION_PIN 2
+#define REQUEST_PIN            31
 
 #define LOG_MODULE_NAME peripheral_uart
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
@@ -52,7 +53,15 @@ static struct bt_conn *auth_conn;
 
 static uint16_t conn_interval;
 static uint16_t next_interval;
-//static bool     ts_ready_to_open;
+static uint32_t rnh_delay;
+static bool     ts_ready_to_open;
+
+static struct k_poll_signal timeslot_sig = K_POLL_SIGNAL_INITIALIZER(timeslot_sig);
+static struct k_poll_event  events[1]    = {
+    K_POLL_EVENT_STATIC_INITIALIZER(K_POLL_TYPE_SIGNAL,
+                                    K_POLL_MODE_NOTIFY_ONLY,
+                                    &timeslot_sig, 0),
+};
 
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -113,58 +122,42 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
     }
 }
 
-static void timeslots_start(uint16_t interval)
-{
-    nrf_gpio_pin_toggle(RADIO_NOTIFICATION_PIN);
-    nrf_gpio_pin_toggle(RADIO_NOTIFICATION_PIN);
-    nrf_gpio_pin_toggle(RADIO_NOTIFICATION_PIN);
-    nrf_gpio_pin_toggle(RADIO_NOTIFICATION_PIN);
-
-    conn_interval = interval;
-    int err = timeslot_start(500, CI_TO_US(interval));
-    if (err) {
-        LOG_ERR("timeslot_start failed (err=%d)", err);
-        error();
-    }
-}
-
 static void conn_param_update(struct bt_conn *conn, uint16_t interval,
                  uint16_t latency, uint16_t timeout)
 {
     /* NOTE: This may be called multiple times at the beginning of the connection. */
     LOG_INF("Connection params updated: (interval=%d, SL=%d, timeout=%d)",
                 interval, latency, timeout);
+
     if (conn_interval) {
         /* This isn't the first conn_param_update. */
-        LOG_INF("Stopping current timeslots");
-        next_interval = interval;
-        int err = timeslot_stop();
-        if (err) {
-            LOG_ERR("timeslot_stop failed (err=%d)", err);
-            error();
+        if (interval != conn_interval) {
+            LOG_INF("Stopping current timeslots");
+            next_interval = interval;
+            int err = timeslot_stop();
+            if (err) {
+                LOG_ERR("timeslot_stop failed (err=%d)", err);
+                error();
+            }
         }
     } else {
-        next_interval    = interval;
-        //ts_ready_to_open = true;
-        timeslots_start(next_interval);
+        if (interval == 28) {
+            LOG_INF("First acceptable interval received.");
+            next_interval    = interval;
+            rnh_delay        = 10;
+            ts_ready_to_open = true;
+                //if (!active && ts_ready_to_open) {
+    //    ts_ready_to_open = false;
+            //k_poll_signal_raise(&timeslot_sig, 0);
+    //}
+        }
     }
-}
-
-static bool conn_param_req(struct bt_conn *conn, struct bt_le_conn_param *param)
-{
-    LOG_INF("Connection params requested: interval (min=%d, max=%d), SL=%d",
-                param->interval_min, param->interval_max, param->latency);
-    param->interval_min = 28;
-    param->interval_max = 28;
-    param->latency      = 0;
-    return true;
 }
 
 static struct bt_conn_cb conn_callbacks = {
     .connected        = connected,
     .disconnected     = disconnected,
     .le_param_updated = conn_param_update,
-    .le_param_req     = conn_param_req,
 };
 
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
@@ -204,10 +197,14 @@ static void radio_notify_cb(const void *context)
 
     nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, active);
 
-    //if (!active && ts_ready_to_open) {
-    //    ts_ready_to_open = false;
-    //    timeslots_start(next_interval);
-   // }
+    if (!active && ts_ready_to_open) {
+        if (rnh_delay) {
+            rnh_delay--;
+        } else {
+            ts_ready_to_open = false;
+            k_poll_signal_raise(&timeslot_sig, 0);
+        }
+    }
 }
 
 static void timeslot_err_cb(int err)
@@ -234,9 +231,8 @@ static void timeslot_skipped_cb(uint8_t count)
 static void timeslot_stopped_cb(void)
 {
     LOG_DBG("Timeslot stopped");
-    if (conn_interval) {
-        //ts_ready_to_open = true;
-        timeslots_start(next_interval);
+    if (ts_ready_to_open) {
+        ts_ready_to_open = true;
     }
 }
 
@@ -265,7 +261,9 @@ void main(void)
     int err = 0;
 
     nrf_gpio_cfg_output(RADIO_NOTIFICATION_PIN);
+    nrf_gpio_cfg_output(REQUEST_PIN);
     nrf_gpio_pin_clear(RADIO_NOTIFICATION_PIN);
+    nrf_gpio_pin_clear(REQUEST_PIN);
 
     bt_conn_cb_register(&conn_callbacks);
 
@@ -279,7 +277,7 @@ void main(void)
     }
 
     err = mpsl_radio_notification_cfg_set(MPSL_RADIO_NOTIFICATION_TYPE_INT_ON_BOTH,
-             MPSL_RADIO_NOTIFICATION_DISTANCE_1740US,
+             MPSL_RADIO_NOTIFICATION_DISTANCE_200US,
              QDEC_IRQn);
     if (err) {
         LOG_ERR("mpsl_radio_notification_cfg_set failed (err: %d)", err);
@@ -321,6 +319,21 @@ void main(void)
     }
 
     for (;;) {
-        k_sleep(K_MSEC(1000));
+        k_poll(events, 1, K_FOREVER);
+
+        k_sleep(K_USEC(5000));
+
+        nrf_gpio_pin_write(REQUEST_PIN, 1);
+        nrf_gpio_pin_write(REQUEST_PIN, 0);
+
+        conn_interval = next_interval;
+        int err = timeslot_start(TS_LEN_US, CI_TO_US(conn_interval));
+        if (err) {
+            LOG_ERR("timeslot_start failed (err=%d)", err);
+            error();
+        }
+
+        events[0].signal->signaled = 0;
+        events[0].state            = K_POLL_STATE_NOT_READY;
     }
 }
