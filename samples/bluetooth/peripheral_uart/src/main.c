@@ -35,9 +35,11 @@
 
 #include <timeslot.h>
 
-#define TS_LEN_US 1500
+#define TS_LEN_US           1500
+#define TS_REQUEST_DELAY_US 2250
+#define RNH_SETTLE_COUNT    2
 
-#define CI_TO_US(ci_ms) (1250UL * (ci_ms))
+#define CI_TO_US(ci_ms)     (1250UL * (ci_ms))
 
 #define RADIO_NOTIFICATION_PIN 2
 #define REQUEST_PIN            31
@@ -51,10 +53,10 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 static struct bt_conn *current_conn;
 static struct bt_conn *auth_conn;
 
-static uint16_t conn_interval;
-static uint16_t next_interval;
-static uint32_t rnh_delay;
-static bool     ts_ready_to_open;
+static uint16_t ts_conn_interval;
+static uint16_t ts_next_interval;
+static uint32_t ts_rnh_delay;
+static bool     ts_ready_to_start;
 
 static struct k_poll_signal timeslot_sig = K_POLL_SIGNAL_INITIALIZER(timeslot_sig);
 static struct k_poll_event  events[1]    = {
@@ -114,7 +116,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
         current_conn = NULL;
     }
 
-    conn_interval = next_interval = 0;
+    ts_conn_interval = ts_next_interval = 0;
     int err = timeslot_stop();
     if (err) {
         LOG_ERR("timeslot_stop failed (err=%d)", err);
@@ -129,28 +131,22 @@ static void conn_param_updated(struct bt_conn *conn, uint16_t interval,
     LOG_INF("Connection params updated: (interval=%d, SL=%d, timeout=%d)",
                 interval, latency, timeout);
 
-    if (conn_interval) {
+    if (ts_conn_interval) {
         /* This isn't the first conn_param_update. */
-        if (interval != conn_interval) {
-            LOG_INF("Stopping current timeslots");
-            next_interval = interval;
-            int err = timeslot_stop();
+        if (interval != ts_conn_interval) {
+            LOG_INF("Stopping current timeslot");
+            ts_next_interval = interval;
+            int err          = timeslot_stop();
             if (err) {
                 LOG_ERR("timeslot_stop failed (err=%d)", err);
                 error();
             }
         }
     } else {
-        if (interval == 28) {
-            LOG_INF("First acceptable interval received.");
-            next_interval    = interval;
-            rnh_delay        = 10;
-            ts_ready_to_open = true;
-                //if (!active && ts_ready_to_open) {
-    //    ts_ready_to_open = false;
-            //k_poll_signal_raise(&timeslot_sig, 0);
-    //}
-        }
+        LOG_INF("Starting timeslot");
+        ts_next_interval  = interval;
+        ts_rnh_delay      = RNH_SETTLE_COUNT;
+        ts_ready_to_start = true;
     }
 }
 
@@ -194,14 +190,13 @@ static void radio_notify_cb(const void *context)
     static bool active;
 
     active = !active;
-
     nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, active);
 
-    if (!active && ts_ready_to_open) {
-        if (rnh_delay) {
-            rnh_delay--;
+    if (ts_ready_to_start && !active) {
+        if (ts_rnh_delay) {
+            ts_rnh_delay--;
         } else {
-            ts_ready_to_open = false;
+            ts_ready_to_start = false;
             k_poll_signal_raise(&timeslot_sig, 0);
         }
     }
@@ -231,8 +226,10 @@ static void timeslot_skipped_cb(uint8_t count)
 static void timeslot_stopped_cb(void)
 {
     LOG_DBG("Timeslot stopped");
-    if (ts_ready_to_open) {
-        ts_ready_to_open = true;
+    if (ts_conn_interval != ts_next_interval) {
+        LOG_INF("Restarting timeslot");
+        ts_rnh_delay     = RNH_SETTLE_COUNT;
+        ts_ready_to_start = true;
     }
 }
 
@@ -321,11 +318,11 @@ void main(void)
         k_poll(events, 1, K_FOREVER);
 
         nrf_gpio_pin_write(REQUEST_PIN, 1);
-        k_sleep(K_USEC(4000));
+        k_sleep(K_USEC(CONFIG_SDC_MAX_CONN_EVENT_LEN_DEFAULT - TS_REQUEST_DELAY_US));
         nrf_gpio_pin_write(REQUEST_PIN, 0);
 
-        conn_interval = next_interval;
-        int err = timeslot_start(TS_LEN_US, CI_TO_US(conn_interval));
+        ts_conn_interval = ts_next_interval;
+        int err = timeslot_start(TS_LEN_US, CI_TO_US(ts_conn_interval));
         if (err) {
             LOG_ERR("timeslot_start failed (err=%d)", err);
             error();
