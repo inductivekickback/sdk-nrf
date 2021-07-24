@@ -122,7 +122,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
     }
 }
 
-static void conn_param_update(struct bt_conn *conn, uint16_t interval,
+static void conn_param_updated(struct bt_conn *conn, uint16_t interval,
                  uint16_t latency, uint16_t timeout)
 {
     /* NOTE: This may be called multiple times at the beginning of the connection. */
@@ -157,7 +157,7 @@ static void conn_param_update(struct bt_conn *conn, uint16_t interval,
 static struct bt_conn_cb conn_callbacks = {
     .connected        = connected,
     .disconnected     = disconnected,
-    .le_param_updated = conn_param_update,
+    .le_param_updated = conn_param_updated,
 };
 
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
@@ -311,8 +311,7 @@ void main(void)
         error();
     }
 
-    err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd,
-                  ARRAY_SIZE(sd));
+    err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
     if (err) {
         LOG_ERR("Advertising failed to start (err %d)", err);
         error();
@@ -321,9 +320,8 @@ void main(void)
     for (;;) {
         k_poll(events, 1, K_FOREVER);
 
-        k_sleep(K_USEC(5000));
-
         nrf_gpio_pin_write(REQUEST_PIN, 1);
+        k_sleep(K_USEC(4000));
         nrf_gpio_pin_write(REQUEST_PIN, 0);
 
         conn_interval = next_interval;
