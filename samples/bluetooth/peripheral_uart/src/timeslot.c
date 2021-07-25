@@ -89,13 +89,21 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
 {
     switch (signal) {
     case MPSL_TIMESLOT_SIGNAL_START:
-        if (timeslot_stopping) {
-            return &action_end;
-        }
-
 #if TS_GPIO_DEBUG
         nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 1);
 #endif
+        if (timeslot_stopping) {
+#if TS_GPIO_DEBUG
+            nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 0);
+            nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 0);
+            nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 0);
+            nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 0);
+            nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 0);
+            nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 0);
+            nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 1);
+#endif
+            return &action_end;
+        }
 
         /* TIMER0 is pre-configured for 1MHz mode by the MPSL. */
         NRF_TIMER0->INTENSET = (TIMER_INTENSET_COMPARE0_Set << TIMER_INTENSET_COMPARE0_Pos);
@@ -131,9 +139,6 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
 #if TS_GPIO_DEBUG
         nrf_gpio_pin_write(TIMESLOT_BLOCKED_PIN, 1);
 #endif
-        if (timeslot_stopping) {
-            return &action_end;
-        }
         k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_BLOCKED_CANCELLED);
         break;
 
@@ -141,9 +146,6 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
 #if TS_GPIO_DEBUG
         nrf_gpio_pin_write(TIMESLOT_CANCELLED_PIN, 1);
 #endif
-        if (timeslot_stopping) {
-            return &action_end;
-        }
         k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_BLOCKED_CANCELLED);
         break;
 
@@ -283,6 +285,9 @@ static void timeslot_thread_fn(void)
                 }
                 return;
             }
+            if (timeslot_stopping) {
+                break;
+            }
             if (timeslot_anchored) {
                 request_normal.params.normal.distance_us = 
                         (conn_interval_us * (blocked_cancelled_count + 1));
@@ -301,6 +306,7 @@ static void timeslot_thread_fn(void)
 
         case SIGNAL_CODE_IDLE:
             if (timeslot_stopping) {
+                nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 0);
                 timeslot_stopping = false;
                 timeslot_started  = false;
                 timeslot_anchored = false;
