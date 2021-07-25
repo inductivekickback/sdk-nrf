@@ -225,7 +225,7 @@ static void timeslot_skipped_cb(uint8_t count)
 
 static void timeslot_stopped_cb(void)
 {
-    LOG_DBG("Timeslot stopped");
+    LOG_INF("Timeslot stopped");
     if (ts_conn_interval != ts_next_interval) {
         LOG_INF("Restarting timeslot");
         ts_rnh_delay     = RNH_SETTLE_COUNT;
