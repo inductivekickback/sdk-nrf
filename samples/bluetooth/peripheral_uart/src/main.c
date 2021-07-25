@@ -37,7 +37,6 @@
 
 #define TS_LEN_US           1500
 #define TS_REQUEST_DELAY_US 2100
-#define RNH_SETTLE_COUNT    2
 
 #define CI_TO_US(ci_ms)     (1250UL * (ci_ms))
 
@@ -55,7 +54,6 @@ static struct bt_conn *auth_conn;
 
 static uint16_t ts_conn_interval;
 static uint16_t ts_next_interval;
-static uint32_t ts_rnh_delay;
 static bool     ts_ready_to_start;
 
 static struct k_poll_signal timeslot_sig = K_POLL_SIGNAL_INITIALIZER(timeslot_sig);
@@ -145,7 +143,6 @@ static void conn_param_updated(struct bt_conn *conn, uint16_t interval,
     } else {
         LOG_INF("Starting timeslot");
         ts_next_interval  = interval;
-        ts_rnh_delay      = RNH_SETTLE_COUNT;
         ts_ready_to_start = true;
     }
 }
@@ -193,12 +190,8 @@ static void radio_notify_cb(const void *context)
     nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, active);
 
     if (ts_ready_to_start && !active) {
-        if (ts_rnh_delay) {
-            ts_rnh_delay--;
-        } else {
-            ts_ready_to_start = false;
-            k_poll_signal_raise(&timeslot_sig, 0);
-        }
+        ts_ready_to_start = false;
+        k_poll_signal_raise(&timeslot_sig, 0);
     }
 }
 
@@ -228,7 +221,6 @@ static void timeslot_stopped_cb(void)
     LOG_INF("Timeslot stopped");
     if (ts_conn_interval != ts_next_interval) {
         LOG_INF("Restarting timeslot");
-        ts_rnh_delay     = RNH_SETTLE_COUNT;
         ts_ready_to_start = true;
     }
 }
