@@ -36,7 +36,7 @@
 #include <timeslot.h>
 
 #define TS_LEN_US           1500
-#define TS_REQUEST_DELAY_US 2250
+#define TS_REQUEST_DELAY_US 2100
 #define RNH_SETTLE_COUNT    2
 
 #define CI_TO_US(ci_ms)     (1250UL * (ci_ms))

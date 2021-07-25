@@ -247,6 +247,16 @@ int timeslot_open(struct timeslot_config *p_config, struct timeslot_cb *p_cb)
     return 0;
 }
 
+static void timeslot_stopped(void) {
+#if TS_GPIO_DEBUG
+    nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 0);
+#endif
+    timeslot_stopping = false;
+    timeslot_started  = false;
+    timeslot_anchored = false;
+    p_timeslot_callbacks->stopped();
+}
+
 static void timeslot_thread_fn(void)
 {
     int err;
@@ -286,6 +296,7 @@ static void timeslot_thread_fn(void)
                 return;
             }
             if (timeslot_stopping) {
+                timeslot_stopped();
                 break;
             }
             if (timeslot_anchored) {
@@ -306,11 +317,7 @@ static void timeslot_thread_fn(void)
 
         case SIGNAL_CODE_IDLE:
             if (timeslot_stopping) {
-                nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 0);
-                timeslot_stopping = false;
-                timeslot_started  = false;
-                timeslot_anchored = false;
-                p_timeslot_callbacks->stopped();
+                timeslot_stopped();
             } else {
                 /* Session ended unexpectedly */
                 p_timeslot_callbacks->error(-TIMESLOT_ERROR_INTERNAL);
