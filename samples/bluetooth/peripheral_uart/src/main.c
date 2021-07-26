@@ -57,15 +57,12 @@ static struct bt_conn *auth_conn;
 static uint16_t ts_conn_interval;
 static uint16_t ts_next_interval;
 static bool     ts_ready_to_start;
-static uint32_t ts_request_timestamp;
-static uint32_t ts_start_timestamp;
-static bool     ts_opened_correctly;
 
-static struct k_poll_signal timeslot_sig = K_POLL_SIGNAL_INITIALIZER(timeslot_sig);
-static struct k_poll_event  events[1]    = {
+static struct k_poll_signal rnh_sig   = K_POLL_SIGNAL_INITIALIZER(rnh_sig);
+static struct k_poll_event  events[1] = {
     K_POLL_EVENT_STATIC_INITIALIZER(K_POLL_TYPE_SIGNAL,
                                     K_POLL_MODE_NOTIFY_ONLY,
-                                    &timeslot_sig, 0),
+                                    &rnh_sig, 0),
 };
 
 static const struct bt_data ad[] = {
@@ -196,7 +193,7 @@ static void radio_notify_cb(const void *context)
 
     if (ts_ready_to_start && active) {
         ts_ready_to_start = false;
-        k_poll_signal_raise(&timeslot_sig, 0);
+        k_poll_signal_raise(&rnh_sig, 0);
     }
 }
 
@@ -209,29 +206,6 @@ static void timeslot_err_cb(int err)
 static void timeslot_start_cb(void)
 {
     LOG_DBG("Timeslot start");
-    if (!ts_opened_correctly) {
-        uint32_t elapsed;
-        ts_start_timestamp = k_cycle_get_32();
-        if (ts_request_timestamp <= ts_start_timestamp) {
-            elapsed = (ts_start_timestamp - ts_request_timestamp);
-        } else {
-            elapsed =  (0xFFFFFFFF - ts_request_timestamp);
-            elapsed += ts_start_timestamp;
-        }
-        elapsed = k_cyc_to_us_near32(elapsed);
-        if (((TS_REQUEST_DELAY_US - TS_REQUEST_TOLERANCE_US) < elapsed) &&
-             ((TS_REQUEST_DELAY_US + TS_REQUEST_TOLERANCE_US) > elapsed)) {
-            ts_opened_correctly = true;
-        } else {
-            LOG_INF("Timeslot request took too long, retrying.");
-            ts_conn_interval = 0;
-            int err          = timeslot_stop();
-            if (err) {
-                LOG_ERR("timeslot_stop failed (err=%d)", err);
-                error();
-            }
-        }
-    }
 }
 
 static void timeslot_end_cb(void)
@@ -340,9 +314,6 @@ void main(void)
         nrf_gpio_pin_write(REQUEST_PIN, 1);
         k_sleep(K_USEC(CONFIG_SDC_MAX_CONN_EVENT_LEN_DEFAULT-TS_REQUEST_DELAY_US+RNH_DISTANCE_US));
         nrf_gpio_pin_write(REQUEST_PIN, 0);
-
-        ts_opened_correctly  = false;
-        ts_request_timestamp = k_cycle_get_32();
 
         ts_conn_interval = ts_next_interval;
         int err = timeslot_start(TS_LEN_US, CI_TO_US(ts_conn_interval));
