@@ -35,13 +35,14 @@
 
 #include <timeslot.h>
 
-#define TS_LEN_US           1500
-#define TS_REQUEST_DELAY_US 2100
+#define TS_LEN_US               1500
+#define TS_REQUEST_DELAY_US     2100
+#define TS_REQUEST_TOLERANCE_US 300
 
-#define CI_TO_US(ci_ms)     (1250UL * (ci_ms))
+#define CI_TO_US(ci_ms)         (1250UL * (ci_ms))
 
-#define RADIO_NOTIFICATION_PIN 2
-#define REQUEST_PIN            31
+#define RADIO_NOTIFICATION_PIN  2
+#define REQUEST_PIN             31
 
 #define LOG_MODULE_NAME peripheral_uart
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
@@ -55,6 +56,9 @@ static struct bt_conn *auth_conn;
 static uint16_t ts_conn_interval;
 static uint16_t ts_next_interval;
 static bool     ts_ready_to_start;
+static uint32_t ts_request_timestamp;
+static uint32_t ts_start_timestamp;
+static bool     ts_opened_correctly;
 
 static struct k_poll_signal timeslot_sig = K_POLL_SIGNAL_INITIALIZER(timeslot_sig);
 static struct k_poll_event  events[1]    = {
@@ -204,6 +208,29 @@ static void timeslot_err_cb(int err)
 static void timeslot_start_cb(void)
 {
     LOG_DBG("Timeslot start");
+    if (!ts_opened_correctly) {
+        uint32_t elapsed;
+        ts_start_timestamp = k_cycle_get_32();
+        if (ts_request_timestamp <= ts_start_timestamp) {
+            elapsed = (ts_start_timestamp - ts_request_timestamp);
+        } else {
+            elapsed =  (0xFFFFFFFF - ts_request_timestamp);
+            elapsed += ts_start_timestamp;
+        }
+        elapsed = k_cyc_to_us_near32(elapsed);
+        if (((TS_REQUEST_DELAY_US - TS_REQUEST_TOLERANCE_US) < elapsed) &&
+             ((TS_REQUEST_DELAY_US + TS_REQUEST_TOLERANCE_US) > elapsed)) {
+            ts_opened_correctly = true;
+        } else {
+            LOG_INF("Timeslot request took too long, retrying.");
+            ts_conn_interval = 0;
+            int err          = timeslot_stop();
+            if (err) {
+                LOG_ERR("timeslot_stop failed (err=%d)", err);
+                error();
+            }
+        }
+    }
 }
 
 static void timeslot_end_cb(void)
@@ -312,6 +339,9 @@ void main(void)
         nrf_gpio_pin_write(REQUEST_PIN, 1);
         k_sleep(K_USEC(CONFIG_SDC_MAX_CONN_EVENT_LEN_DEFAULT - TS_REQUEST_DELAY_US));
         nrf_gpio_pin_write(REQUEST_PIN, 0);
+
+        ts_opened_correctly  = false;
+        ts_request_timestamp = k_cycle_get_32();
 
         ts_conn_interval = ts_next_interval;
         int err = timeslot_start(TS_LEN_US, CI_TO_US(ts_conn_interval));
