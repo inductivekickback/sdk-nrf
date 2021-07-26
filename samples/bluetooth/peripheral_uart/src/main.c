@@ -36,7 +36,8 @@
 #include <timeslot.h>
 
 #define TS_LEN_US               1500
-#define TS_REQUEST_DELAY_US     2100
+#define RNH_DISTANCE_US         200
+#define TS_REQUEST_DELAY_US     1900
 #define TS_REQUEST_TOLERANCE_US 300
 
 #define CI_TO_US(ci_ms)         (1250UL * (ci_ms))
@@ -193,7 +194,7 @@ static void radio_notify_cb(const void *context)
     active = !active;
     nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, active);
 
-    if (ts_ready_to_start && !active) {
+    if (ts_ready_to_start && active) {
         ts_ready_to_start = false;
         k_poll_signal_raise(&timeslot_sig, 0);
     }
@@ -337,7 +338,7 @@ void main(void)
         k_poll(events, 1, K_FOREVER);
 
         nrf_gpio_pin_write(REQUEST_PIN, 1);
-        k_sleep(K_USEC(CONFIG_SDC_MAX_CONN_EVENT_LEN_DEFAULT - TS_REQUEST_DELAY_US));
+        k_sleep(K_USEC(CONFIG_SDC_MAX_CONN_EVENT_LEN_DEFAULT-TS_REQUEST_DELAY_US+RNH_DISTANCE_US));
         nrf_gpio_pin_write(REQUEST_PIN, 0);
 
         ts_opened_correctly  = false;
