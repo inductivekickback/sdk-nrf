@@ -13,7 +13,7 @@ extern "C" {
 
 #include <mpsl_timeslot.h>
 
-#define TS_LEN_US               1500
+#define TS_LEN_US               5000
 #define RNH_DISTANCE_US         800
 #define TS_REQUEST_DELAY_US     1900
 #define TS_REQUEST_TOLERANCE_US 300
