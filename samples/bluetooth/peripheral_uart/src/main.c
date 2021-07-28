@@ -39,8 +39,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 static struct bt_conn *current_conn;
 static struct bt_conn *auth_conn;
 
-static uint16_t ts_conn_interval;
-static uint16_t ts_next_interval;
+static uint16_t conn_interval;
 
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -93,7 +92,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
         current_conn = NULL;
     }
 
-    ts_conn_interval = ts_next_interval = 0;
+    conn_interval = 0;
     int err = timeslot_stop();
     if (err) {
         LOG_ERR("timeslot_stop failed (err=%d)", err);
@@ -108,22 +107,9 @@ static void conn_param_updated(struct bt_conn *conn, uint16_t interval,
     LOG_INF("Connection params updated: (interval=%d, SL=%d, timeout=%d)",
                 interval, latency, timeout);
 
-    if (ts_conn_interval) {
-        /* This isn't the first conn_param_update. */
-        /* TODO:
-        if (interval != ts_conn_interval) {
-            LOG_INF("Stopping current timeslot");
-            ts_next_interval = interval;
-            int err          = timeslot_stop();
-            if (err) {
-                LOG_ERR("timeslot_stop failed (err=%d)", err);
-                error();
-            }
-        }
-        */
-    } else {
+    if (!conn_interval) {
         LOG_INF("Starting timeslot (CI=%d ms)", (int)CI_TO_US(interval));
-        ts_conn_interval = ts_next_interval  = interval;
+        conn_interval = interval;
         int err = timeslot_start(TS_LEN_US);
         if (err) {
             LOG_ERR("timeslot_start failed (err=%d)", err);
@@ -190,11 +176,6 @@ static void timeslot_skipped_cb(uint8_t count)
 static void timeslot_stopped_cb(void)
 {
     LOG_INF("Timeslot stopped");
-    /*
-    if (ts_conn_interval != ts_next_interval) {
-        LOG_INF("Restarting timeslot");
-    }
-    */
 }
 
 #if !TIMESLOT_CALLS_RADIO_IRQHANDLER
