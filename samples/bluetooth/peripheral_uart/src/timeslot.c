@@ -13,6 +13,7 @@
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <mpsl.h>
+#include <mpsl_radio_notification.h>
 #include <mpsl_timeslot.h>
 
 #define TS_GPIO_DEBUG 1
@@ -22,6 +23,8 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define TIMESLOT_OPEN_PIN          4
 #define TIMESLOT_BLOCKED_PIN       28
 #define TIMESLOT_CANCELLED_PIN     30
+#define RADIO_NOTIFICATION_PIN     2
+#define REQUEST_PIN                31
 #endif
 
 #include <timeslot.h>
@@ -37,21 +40,24 @@ enum SIGNAL_CODE
     SIGNAL_CODE_BLOCKED_CANCELLED = 0x03,
     SIGNAL_CODE_OVERSTAYED        = 0x04,
     SIGNAL_CODE_IDLE              = 0x05,
-    SIGNAL_CODE_UNEXPECTED        = 0x06
+    SIGNAL_CODE_RNH_ACTIVE        = 0x06,
+    SIGNAL_CODE_UNEXPECTED        = 0x07
 };
 
-static uint32_t                conn_interval_us;
 static uint32_t                ts_len_us;
+static bool                    rnh_active;
 static uint8_t                 blocked_cancelled_count;
 static bool                    session_open;
-static bool                    timeslot_anchored;
 static bool                    timeslot_started;
 static bool                    timeslot_stopping;
+static bool                    timeslot_requested;
+static bool                    timeslot_rnh_consumed;
+static uint32_t                mpsl_callback_signal=11;
 static struct timeslot_config *p_timeslot_config;
 static struct timeslot_cb     *p_timeslot_callbacks;
 
 static struct k_poll_signal timeslot_sig = K_POLL_SIGNAL_INITIALIZER(timeslot_sig);
-static struct k_poll_event  events[1]    = {
+static struct k_poll_event events[1]     = {
     K_POLL_EVENT_STATIC_INITIALIZER(K_POLL_TYPE_SIGNAL,
                                     K_POLL_MODE_NOTIFY_ONLY,
                                     &timeslot_sig, 0),
@@ -67,10 +73,6 @@ static mpsl_timeslot_request_t request_earliest = {
     }
 };
 
-static mpsl_timeslot_request_t request_normal = {
-    .request_type = MPSL_TIMESLOT_REQ_TYPE_NORMAL
-};
-
 static mpsl_timeslot_signal_return_param_t action_none = {
     .callback_action = MPSL_TIMESLOT_SIGNAL_ACTION_NONE
 };
@@ -79,14 +81,11 @@ static mpsl_timeslot_signal_return_param_t action_end = {
     .callback_action = MPSL_TIMESLOT_SIGNAL_ACTION_END
 };
 
-static mpsl_timeslot_signal_return_param_t action_request_normal = {
-    .callback_action       = MPSL_TIMESLOT_SIGNAL_ACTION_REQUEST,
-    .params.request.p_next = &request_normal
-};
-
 static mpsl_timeslot_signal_return_param_t*
 mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
 {
+    mpsl_callback_signal = signal;
+
     switch (signal) {
     case MPSL_TIMESLOT_SIGNAL_START:
 #if TS_GPIO_DEBUG
@@ -109,7 +108,7 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
         NRF_TIMER0->CC[0]    = (ts_len_us - p_timeslot_config->safety_margin_us);
         NRF_TIMER0->INTENSET = (TIMER_INTENSET_COMPARE0_Set<<TIMER_INTENSET_COMPARE0_Pos);
         NVIC_EnableIRQ(TIMER0_IRQn);
-        k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_START);
+        NVIC_SetPendingIRQ(TIMESLOT_IRQN);
         break;
 
     case MPSL_TIMESLOT_SIGNAL_TIMER0:
@@ -129,13 +128,8 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
         nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 0);
 #endif
         NRF_TIMER0->TASKS_STOP = 1;
-        k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_TIMER0);
-        if (timeslot_stopping) {
-            return &action_end;
-        }
-        request_normal.params.normal.distance_us = conn_interval_us;
-        request_normal.params.normal.priority    = MPSL_TIMESLOT_PRIORITY_NORMAL;
-        return &action_request_normal;
+        NVIC_SetPendingIRQ(TIMESLOT_IRQN);
+        return &action_end;
 
     case MPSL_TIMESLOT_SIGNAL_RADIO:
         if (timeslot_stopping) {
@@ -144,7 +138,7 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
 #if TIMESLOT_CALLS_RADIO_IRQHANDLER
         RADIO_IRQHandler();
 #else
-        k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_RADIO);
+        NVIC_SetPendingIRQ(TIMESLOT_IRQN);
 #endif
         break;
 
@@ -187,6 +181,57 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
     return &action_none;
 }
 
+static void radio_notify_cb(const void *context)
+{
+    rnh_active = !rnh_active;
+#if TS_GPIO_DEBUG
+    nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, rnh_active);
+#endif
+
+    if (!timeslot_started)
+    {
+        /* Ignore RNH events until the timeslot is started. */
+        return;
+    }
+
+    if (timeslot_requested) {
+        if (!timeslot_rnh_consumed) {
+            timeslot_rnh_consumed = true;
+            LOG_INF("Timeslot's RNH up");
+            return;
+        }
+        switch (mpsl_callback_signal) {
+        case MPSL_TIMESLOT_SIGNAL_START:
+            LOG_INF("SIGNAL_START");
+            k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_START);
+            break;
+        case MPSL_TIMESLOT_SIGNAL_RADIO:
+            LOG_INF("SIGNAL_RADIO");
+            k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_RADIO);
+            break;
+        case MPSL_TIMESLOT_SIGNAL_TIMER0:
+            LOG_INF("SIGNAL_TIMER0");
+            k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_TIMER0);
+            break;
+        case MPSL_TIMESLOT_SIGNAL_SESSION_IDLE:
+            LOG_INF("SIGNAL_IDLE");
+            break;
+        default:
+            LOG_INF("RNH unexpected: %d", mpsl_callback_signal);
+            k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_UNEXPECTED);
+            break;
+        };
+
+        rnh_active = !rnh_active;
+#if TS_GPIO_DEBUG
+        nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, rnh_active);
+#endif
+    } else if (rnh_active) {
+        LOG_INF("RNH up");
+        k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_RNH_ACTIVE);
+    }
+}
+
 int timeslot_stop(void)
 {
     if (!session_open || !timeslot_started) {
@@ -197,22 +242,19 @@ int timeslot_stop(void)
     return 0;
 }
 
-int timeslot_start(uint32_t len_us, uint32_t interval_us)
+int timeslot_start(uint32_t len_us)
 {
     if (!session_open || timeslot_started || timeslot_stopping) {
         return -TIMESLOT_ERROR_TIMESLOT_ALREADY_STARTED;
     }
 
-    LOG_INF("timeslot_start(len_us: %d, interval_us: %d)", len_us, interval_us);
+    LOG_INF("timeslot_start(len_us: %d)", len_us);
     ts_len_us               = len_us;
-    conn_interval_us        = interval_us;
     blocked_cancelled_count = 0;
     timeslot_started        = true;
 
-    request_normal.params.normal.length_us     = len_us;
     request_earliest.params.earliest.length_us = len_us;
-
-    return mpsl_timeslot_request(mpsl_session_id, &request_earliest);
+    return 0;
 }
 
 int timeslot_open(struct timeslot_config *p_config, struct timeslot_cb *p_cb)
@@ -235,14 +277,26 @@ int timeslot_open(struct timeslot_config *p_config, struct timeslot_cb *p_cb)
 #endif
 
     LOG_INF("timeslot_open(...)");
+
+    int err = mpsl_radio_notification_cfg_set(MPSL_RADIO_NOTIFICATION_TYPE_INT_ON_BOTH,
+                MPSL_RADIO_NOTIFICATION_DISTANCE_200US,
+                TIMESLOT_IRQN);
+    if (err) {
+        LOG_ERR("mpsl_radio_notification_cfg_set failed (err: %d)", err);
+        return err;
+    }
+
+    IRQ_CONNECT(DT_IRQN(DT_NODELABEL(TIMESLOT_IRQ_NODELABEL)), TIMESLOT_IRQ_PRIO,
+                radio_notify_cb, NULL, 0);
+    irq_enable(DT_IRQN(DT_NODELABEL(TIMESLOT_IRQ_NODELABEL)));
+
     p_timeslot_config    = p_config;
     p_timeslot_callbacks = p_cb;
 
-    request_normal.params.normal.hfclk          = p_timeslot_config->hfclk;
     request_earliest.params.earliest.hfclk      = p_timeslot_config->hfclk;
     request_earliest.params.earliest.timeout_us = p_timeslot_config->timeout_us;
 
-    int err = mpsl_timeslot_session_open(mpsl_cb, &mpsl_session_id);
+    err = mpsl_timeslot_session_open(mpsl_cb, &mpsl_session_id);
     if (err) {
         return err;
     }
@@ -251,9 +305,13 @@ int timeslot_open(struct timeslot_config *p_config, struct timeslot_cb *p_cb)
     nrf_gpio_cfg_output(TIMESLOT_OPEN_PIN);
     nrf_gpio_cfg_output(TIMESLOT_BLOCKED_PIN);
     nrf_gpio_cfg_output(TIMESLOT_CANCELLED_PIN);
+    nrf_gpio_cfg_output(RADIO_NOTIFICATION_PIN);
+    nrf_gpio_cfg_output(REQUEST_PIN);
     nrf_gpio_pin_clear(TIMESLOT_OPEN_PIN);
     nrf_gpio_pin_clear(TIMESLOT_BLOCKED_PIN);
     nrf_gpio_pin_clear(TIMESLOT_CANCELLED_PIN);
+    nrf_gpio_pin_clear(RADIO_NOTIFICATION_PIN);
+    nrf_gpio_pin_clear(REQUEST_PIN);
 #endif
 
     session_open = true;
@@ -266,7 +324,6 @@ static void timeslot_stopped(void) {
 #endif
     timeslot_stopping = false;
     timeslot_started  = false;
-    timeslot_anchored = false;
     p_timeslot_callbacks->stopped();
 }
 
@@ -281,7 +338,6 @@ static void timeslot_thread_fn(void)
         case SIGNAL_CODE_START:
             p_timeslot_callbacks->start();
             blocked_cancelled_count = 0;
-            timeslot_anchored       = true;
             break;
 
         case SIGNAL_CODE_TIMER0:
@@ -295,45 +351,37 @@ static void timeslot_thread_fn(void)
 #endif
 
         case SIGNAL_CODE_BLOCKED_CANCELLED:
+            LOG_INF("SIGNAL_CODE_BLOCKED_CANCELLED");
 #if TS_GPIO_DEBUG
             nrf_gpio_pin_write(TIMESLOT_BLOCKED_PIN,   0);
             nrf_gpio_pin_write(TIMESLOT_CANCELLED_PIN, 0);
 #endif
             blocked_cancelled_count++;
+            timeslot_requested = false;
+            rnh_active = !rnh_active;
+#if TS_GPIO_DEBUG
+            nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, rnh_active);
+#endif
             if (blocked_cancelled_count > p_timeslot_config->skipped_tolerance) {
-                if (timeslot_anchored) {
-                    p_timeslot_callbacks->error(-TIMESLOT_ERROR_CANCELLED);
-                } else {
-                    p_timeslot_callbacks->error(-TIMESLOT_ERROR_ANCHOR_FAILED);
-                }
+                p_timeslot_callbacks->error(-TIMESLOT_ERROR_REQUESTS_FAILED);
                 break;
             }
             if (timeslot_stopping) {
                 timeslot_stopped();
                 break;
-            }
-            if (timeslot_anchored) {
-                request_normal.params.normal.distance_us = 
-                        (conn_interval_us * (blocked_cancelled_count + 1));
-                request_normal.params.normal.priority    = MPSL_TIMESLOT_PRIORITY_HIGH;
-                err = mpsl_timeslot_request(mpsl_session_id, &request_normal);
-            } else {
-                err = mpsl_timeslot_request(mpsl_session_id, &request_earliest);
-            }
-            if (err) {
-                timeslot_started  = false;
-                timeslot_stopping = false;
-                p_timeslot_callbacks->error(err);
             }
             p_timeslot_callbacks->skipped(blocked_cancelled_count);
             break;
 
         case SIGNAL_CODE_IDLE:
+            LOG_INF("SIGNAL_CODE_IDLE");
+            timeslot_requested = false;
+            rnh_active = !rnh_active;
+#if TS_GPIO_DEBUG
+            nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, rnh_active);
+#endif
             if (timeslot_stopping) {
                 timeslot_stopped();
-            } else {
-                /* Session ended unexpectedly */
-                p_timeslot_callbacks->error(-TIMESLOT_ERROR_INTERNAL);
             }
             break;
 
@@ -344,10 +392,29 @@ static void timeslot_thread_fn(void)
 
         case SIGNAL_CODE_UNEXPECTED:
             /* Something like MPSL_TIMESLOT_SIGNAL_INVALID_RETURN happened. */
+            LOG_INF("SIGNAL_CODE_UNEXPECTED: %d", mpsl_callback_signal);
             p_timeslot_callbacks->error(-TIMESLOT_ERROR_INTERNAL);
             break;
 
+        case SIGNAL_CODE_RNH_ACTIVE:
+#if TS_GPIO_DEBUG
+            nrf_gpio_pin_write(REQUEST_PIN, 1);
+#endif
+            k_sleep(K_USEC(CONFIG_SDC_MAX_CONN_EVENT_LEN_DEFAULT-TS_REQUEST_DELAY_US+RNH_DISTANCE_US));
+#if TS_GPIO_DEBUG
+            nrf_gpio_pin_write(REQUEST_PIN, 0);
+#endif
+            timeslot_requested    = true;
+            timeslot_rnh_consumed = false;
+
+            err = mpsl_timeslot_request(mpsl_session_id, &request_earliest);
+            if (err) {
+                p_timeslot_callbacks->error(err);
+            }
+            break;
+
         default:
+            LOG_INF("ERROR signal: %d", events[0].signal->result);
             p_timeslot_callbacks->error(-TIMESLOT_ERROR_INTERNAL);
             break;
         }

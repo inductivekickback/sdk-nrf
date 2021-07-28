@@ -8,6 +8,7 @@
  *  @brief Nordic UART Bridge Service (NUS) sample
  */
 
+#include <stdio.h>
 #include <zephyr/types.h>
 #include <zephyr.h>
 #include <drivers/uart.h>
@@ -19,31 +20,15 @@
 #include <bluetooth/uuid.h>
 #include <bluetooth/gatt.h>
 #include <bluetooth/hci.h>
-
 #include <bluetooth/services/nus.h>
-
-#include <mpsl.h>
-#include <mpsl_radio_notification.h>
 
 #include <settings/settings.h>
 
-#include <stdio.h>
-
 #include <logging/log.h>
-
-#include <hal/nrf_gpio.h>
 
 #include <timeslot.h>
 
-#define TS_LEN_US               1500
-#define RNH_DISTANCE_US         200
-#define TS_REQUEST_DELAY_US     1900
-#define TS_REQUEST_TOLERANCE_US 300
-
-#define CI_TO_US(ci_ms)         (1250UL * (ci_ms))
-
-#define RADIO_NOTIFICATION_PIN  2
-#define REQUEST_PIN             31
+#define CI_TO_US(ci_ms) (1250UL * (ci_ms))
 
 #define LOG_MODULE_NAME peripheral_uart
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
@@ -56,14 +41,6 @@ static struct bt_conn *auth_conn;
 
 static uint16_t ts_conn_interval;
 static uint16_t ts_next_interval;
-static bool     ts_ready_to_start;
-
-static struct k_poll_signal rnh_sig   = K_POLL_SIGNAL_INITIALIZER(rnh_sig);
-static struct k_poll_event  events[1] = {
-    K_POLL_EVENT_STATIC_INITIALIZER(K_POLL_TYPE_SIGNAL,
-                                    K_POLL_MODE_NOTIFY_ONLY,
-                                    &rnh_sig, 0),
-};
 
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -133,6 +110,7 @@ static void conn_param_updated(struct bt_conn *conn, uint16_t interval,
 
     if (ts_conn_interval) {
         /* This isn't the first conn_param_update. */
+        /* TODO:
         if (interval != ts_conn_interval) {
             LOG_INF("Stopping current timeslot");
             ts_next_interval = interval;
@@ -142,10 +120,14 @@ static void conn_param_updated(struct bt_conn *conn, uint16_t interval,
                 error();
             }
         }
+        */
     } else {
-        LOG_INF("Starting timeslot");
-        ts_next_interval  = interval;
-        ts_ready_to_start = true;
+        LOG_INF("Starting timeslot (CI=%d ms)", (int)CI_TO_US(interval));
+        ts_conn_interval = ts_next_interval  = interval;
+        int err = timeslot_start(TS_LEN_US);
+        if (err) {
+            LOG_ERR("timeslot_start failed (err=%d)", err);
+        }
     }
 }
 
@@ -184,19 +166,6 @@ static struct bt_nus_cb nus_cb = {
     .send_enabled = bt_nus_enabled_cb,
 };
 
-static void radio_notify_cb(const void *context)
-{
-    static bool active;
-
-    active = !active;
-    nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, active);
-
-    if (ts_ready_to_start && active) {
-        ts_ready_to_start = false;
-        k_poll_signal_raise(&rnh_sig, 0);
-    }
-}
-
 static void timeslot_err_cb(int err)
 {
     LOG_ERR("Timeslot session error: %d", err);
@@ -221,10 +190,11 @@ static void timeslot_skipped_cb(uint8_t count)
 static void timeslot_stopped_cb(void)
 {
     LOG_INF("Timeslot stopped");
+    /*
     if (ts_conn_interval != ts_next_interval) {
         LOG_INF("Restarting timeslot");
-        ts_ready_to_start = true;
     }
+    */
 }
 
 #if !TIMESLOT_CALLS_RADIO_IRQHANDLER
@@ -251,32 +221,7 @@ void main(void)
 {
     int err = 0;
 
-    nrf_gpio_cfg_output(RADIO_NOTIFICATION_PIN);
-    nrf_gpio_cfg_output(REQUEST_PIN);
-    nrf_gpio_pin_clear(RADIO_NOTIFICATION_PIN);
-    nrf_gpio_pin_clear(REQUEST_PIN);
-
     bt_conn_cb_register(&conn_callbacks);
-
-    uint8_t mpsl_rev;
-    err = mpsl_build_revision_get(&mpsl_rev);
-    if (err) {
-        LOG_ERR("mpsl_build_revision_get failed (err: %d)", err);
-        error();
-    } else {
-        LOG_INF("MPSL build rev: %d", mpsl_rev);
-    }
-
-    err = mpsl_radio_notification_cfg_set(MPSL_RADIO_NOTIFICATION_TYPE_INT_ON_BOTH,
-             MPSL_RADIO_NOTIFICATION_DISTANCE_200US,
-             QDEC_IRQn);
-    if (err) {
-        LOG_ERR("mpsl_radio_notification_cfg_set failed (err: %d)", err);
-        error();
-    }
-
-    IRQ_CONNECT(DT_IRQN(DT_NODELABEL(qdec)), 5, radio_notify_cb, NULL, 0);
-    irq_enable(DT_IRQN(DT_NODELABEL(qdec)));
 
     err = timeslot_open(&timeslot_config, &timeslot_callbacks);
     if (err) {
@@ -309,20 +254,6 @@ void main(void)
     }
 
     for (;;) {
-        k_poll(events, 1, K_FOREVER);
-
-        nrf_gpio_pin_write(REQUEST_PIN, 1);
-        k_sleep(K_USEC(CONFIG_SDC_MAX_CONN_EVENT_LEN_DEFAULT-TS_REQUEST_DELAY_US+RNH_DISTANCE_US));
-        nrf_gpio_pin_write(REQUEST_PIN, 0);
-
-        ts_conn_interval = ts_next_interval;
-        int err = timeslot_start(TS_LEN_US, CI_TO_US(ts_conn_interval));
-        if (err) {
-            LOG_ERR("timeslot_start failed (err=%d)", err);
-            error();
-        }
-
-        events[0].signal->signaled = 0;
-        events[0].state            = K_POLL_STATE_NOT_READY;
+        k_sleep(K_MSEC(100));
     }
 }
