@@ -32,6 +32,8 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define TIMESLOT_THREAD_STACK_SIZE 768
 #define TIMESLOT_THREAD_PRIORITY   5
 
+#define INVALID_MPSL_SIGNAL        11
+
 enum SIGNAL_CODE
 {
     SIGNAL_CODE_START             = 0x00,
@@ -45,14 +47,12 @@ enum SIGNAL_CODE
 };
 
 static uint32_t                ts_len_us;
-static bool                    rnh_active;
 static uint8_t                 blocked_cancelled_count;
 static bool                    session_open;
 static bool                    timeslot_started;
 static bool                    timeslot_stopping;
 static bool                    timeslot_requested;
-static bool                    timeslot_rnh_consumed;
-static uint32_t                mpsl_callback_signal=11;
+static uint32_t                mpsl_callback_signal=INVALID_MPSL_SIGNAL;
 static struct timeslot_config *p_timeslot_config;
 static struct timeslot_cb     *p_timeslot_callbacks;
 
@@ -84,8 +84,6 @@ static mpsl_timeslot_signal_return_param_t action_end = {
 static mpsl_timeslot_signal_return_param_t*
 mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
 {
-    mpsl_callback_signal = signal;
-
     switch (signal) {
     case MPSL_TIMESLOT_SIGNAL_START:
 #if TS_GPIO_DEBUG
@@ -107,6 +105,7 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
         /* TIMER0 is pre-configured for 1MHz mode by the MPSL. */
         NRF_TIMER0->CC[0]    = (ts_len_us - p_timeslot_config->safety_margin_us);
         NRF_TIMER0->INTENSET = (TIMER_INTENSET_COMPARE0_Set<<TIMER_INTENSET_COMPARE0_Pos);
+        mpsl_callback_signal = MPSL_TIMESLOT_SIGNAL_START;
         NVIC_EnableIRQ(TIMER0_IRQn);
         NVIC_SetPendingIRQ(TIMESLOT_IRQN);
         break;
@@ -128,6 +127,7 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
         nrf_gpio_pin_write(TIMESLOT_OPEN_PIN, 0);
 #endif
         NRF_TIMER0->TASKS_STOP = 1;
+        mpsl_callback_signal   = MPSL_TIMESLOT_SIGNAL_TIMER0;
         NVIC_SetPendingIRQ(TIMESLOT_IRQN);
         return &action_end;
 
@@ -138,6 +138,7 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
 #if TIMESLOT_CALLS_RADIO_IRQHANDLER
         RADIO_IRQHandler();
 #else
+        mpsl_callback_signal = MPSL_TIMESLOT_SIGNAL_RADIO;
         NVIC_SetPendingIRQ(TIMESLOT_IRQN);
 #endif
         break;
@@ -183,23 +184,14 @@ mpsl_cb(mpsl_timeslot_session_id_t session_id, uint32_t signal)
 
 static void radio_notify_cb(const void *context)
 {
-    rnh_active = !rnh_active;
-#if TS_GPIO_DEBUG
-    nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, rnh_active);
-#endif
-
     if (!timeslot_started)
     {
         /* Ignore RNH events until the timeslot is started. */
         return;
     }
 
-    if (timeslot_requested) {
-        if (!timeslot_rnh_consumed) {
-            timeslot_rnh_consumed = true;
-            LOG_INF("Timeslot's RNH up");
-            return;
-        }
+    if (INVALID_MPSL_SIGNAL != mpsl_callback_signal) {
+        /* This is an MPSL callback. */
         switch (mpsl_callback_signal) {
         case MPSL_TIMESLOT_SIGNAL_START:
             LOG_INF("SIGNAL_START");
@@ -221,13 +213,20 @@ static void radio_notify_cb(const void *context)
             k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_UNEXPECTED);
             break;
         };
-
-        rnh_active = !rnh_active;
+        mpsl_callback_signal = INVALID_MPSL_SIGNAL;
+    } else {
+        /* This is a radio notification. */
 #if TS_GPIO_DEBUG
-        nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, rnh_active);
+        nrf_gpio_pin_set(RADIO_NOTIFICATION_PIN);
+        nrf_gpio_pin_set(RADIO_NOTIFICATION_PIN);
+        nrf_gpio_pin_set(RADIO_NOTIFICATION_PIN);
+        nrf_gpio_pin_set(RADIO_NOTIFICATION_PIN);
+        nrf_gpio_pin_set(RADIO_NOTIFICATION_PIN);
+        nrf_gpio_pin_set(RADIO_NOTIFICATION_PIN);
+        nrf_gpio_pin_clear(RADIO_NOTIFICATION_PIN);
 #endif
-    } else if (rnh_active) {
-        LOG_INF("RNH up");
+        LOG_INF("RNH UP!");
+        // TODO: If there is an active request then don't request again.
         k_poll_signal_raise(&timeslot_sig, SIGNAL_CODE_RNH_ACTIVE);
     }
 }
@@ -277,10 +276,9 @@ int timeslot_open(struct timeslot_config *p_config, struct timeslot_cb *p_cb)
 #endif
 
     LOG_INF("timeslot_open(...)");
-
-    int err = mpsl_radio_notification_cfg_set(MPSL_RADIO_NOTIFICATION_TYPE_INT_ON_BOTH,
-                MPSL_RADIO_NOTIFICATION_DISTANCE_200US,
-                TIMESLOT_IRQN);
+    int err = mpsl_radio_notification_cfg_set(MPSL_RADIO_NOTIFICATION_TYPE_INT_ON_ACTIVE,
+                                                MPSL_RADIO_NOTIFICATION_DISTANCE_800US,
+                                                TIMESLOT_IRQN);
     if (err) {
         LOG_ERR("mpsl_radio_notification_cfg_set failed (err: %d)", err);
         return err;
@@ -352,16 +350,12 @@ static void timeslot_thread_fn(void)
 
         case SIGNAL_CODE_BLOCKED_CANCELLED:
             LOG_INF("SIGNAL_CODE_BLOCKED_CANCELLED");
+            timeslot_requested = false;
 #if TS_GPIO_DEBUG
             nrf_gpio_pin_write(TIMESLOT_BLOCKED_PIN,   0);
             nrf_gpio_pin_write(TIMESLOT_CANCELLED_PIN, 0);
 #endif
             blocked_cancelled_count++;
-            timeslot_requested = false;
-            rnh_active = !rnh_active;
-#if TS_GPIO_DEBUG
-            nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, rnh_active);
-#endif
             if (blocked_cancelled_count > p_timeslot_config->skipped_tolerance) {
                 p_timeslot_callbacks->error(-TIMESLOT_ERROR_REQUESTS_FAILED);
                 break;
@@ -376,10 +370,6 @@ static void timeslot_thread_fn(void)
         case SIGNAL_CODE_IDLE:
             LOG_INF("SIGNAL_CODE_IDLE");
             timeslot_requested = false;
-            rnh_active = !rnh_active;
-#if TS_GPIO_DEBUG
-            nrf_gpio_pin_write(RADIO_NOTIFICATION_PIN, rnh_active);
-#endif
             if (timeslot_stopping) {
                 timeslot_stopped();
             }
@@ -397,6 +387,9 @@ static void timeslot_thread_fn(void)
             break;
 
         case SIGNAL_CODE_RNH_ACTIVE:
+            if (timeslot_requested) {
+                break;
+            }
 #if TS_GPIO_DEBUG
             nrf_gpio_pin_write(REQUEST_PIN, 1);
 #endif
@@ -404,9 +397,7 @@ static void timeslot_thread_fn(void)
 #if TS_GPIO_DEBUG
             nrf_gpio_pin_write(REQUEST_PIN, 0);
 #endif
-            timeslot_requested    = true;
-            timeslot_rnh_consumed = false;
-
+            timeslot_requested = true;
             err = mpsl_timeslot_request(mpsl_session_id, &request_earliest);
             if (err) {
                 p_timeslot_callbacks->error(err);
