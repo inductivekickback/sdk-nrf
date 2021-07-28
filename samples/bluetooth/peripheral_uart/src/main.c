@@ -40,6 +40,8 @@ static struct bt_conn *current_conn;
 static struct bt_conn *auth_conn;
 
 static uint16_t conn_interval;
+static uint16_t next_interval;
+static bool     timeslot_stopping;
 
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -107,12 +109,38 @@ static void conn_param_updated(struct bt_conn *conn, uint16_t interval,
     LOG_INF("Connection params updated: (interval=%d, SL=%d, timeout=%d)",
                 interval, latency, timeout);
 
-    if (!conn_interval) {
-        LOG_INF("Starting timeslot (CI=%d ms)", (int)CI_TO_US(interval));
-        conn_interval = interval;
-        int err = timeslot_start(TS_LEN_US);
-        if (err) {
-            LOG_ERR("timeslot_start failed (err=%d)", err);
+    int err;
+
+    if (interval >= 12) {
+        if (conn_interval != interval) {
+            if (conn_interval) {
+                next_interval = interval;
+                if (!timeslot_stopping) {
+                    timeslot_stopping = true;
+                    err = timeslot_stop();
+                    if (err) {
+                        LOG_ERR("timeslot_start failed (err=%d)", err);
+                    }
+                }
+            } else {
+                // Just start.
+                conn_interval = interval;
+                err = timeslot_start(TS_LEN_US);
+                if (err) {
+                    LOG_ERR("timeslot_start failed (err=%d)", err);
+                }
+            }
+        }
+    } else {
+        if (conn_interval) {
+            LOG_INF("CI is too short, stopping timeslot");
+            timeslot_stopping = true;
+            err = timeslot_stop();
+            if (err) {
+                LOG_ERR("timeslot_start failed (err=%d)", err);
+            }
+        } else {
+            LOG_INF("Waiting for longer CI...");
         }
     }
 }
@@ -176,6 +204,16 @@ static void timeslot_skipped_cb(uint8_t count)
 static void timeslot_stopped_cb(void)
 {
     LOG_INF("Timeslot stopped");
+    timeslot_stopping = false;
+    if (conn_interval != next_interval) {
+        conn_interval = next_interval;
+        int err = timeslot_start(TS_LEN_US);
+        if (err) {
+            LOG_ERR("timeslot_start failed (err=%d)", err);
+        }
+    } else {
+        conn_interval = 0;
+    }
 }
 
 #if !TIMESLOT_CALLS_RADIO_IRQHANDLER
