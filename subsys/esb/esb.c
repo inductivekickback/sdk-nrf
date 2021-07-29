@@ -938,7 +938,7 @@ static void get_and_clear_irqs(uint32_t *interrupts)
 	irq_unlock(key);
 }
 
-static void RADIO_IRQHandler(void)
+void RADIO_IRQHandler(void)
 {
 	if (NRF_RADIO->EVENTS_READY &&
 	    (NRF_RADIO->INTENSET & RADIO_INTENSET_READY_Msk)) {
@@ -1028,8 +1028,6 @@ int esb_init(const struct esb_config *config)
 	sys_timer_init();
 	ppi_init();
 
-	IRQ_DIRECT_CONNECT(RADIO_IRQn, config->radio_irq_priority,
-			   RADIO_IRQHandler, 0);
 	IRQ_DIRECT_CONNECT(ESB_EVT_IRQ, config->event_irq_priority,
 			   ESB_EVT_IRQHandler, 0);
 	IRQ_DIRECT_CONNECT(ESB_SYS_TIMER_IRQn, config->event_irq_priority,

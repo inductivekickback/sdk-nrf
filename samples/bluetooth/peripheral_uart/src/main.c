@@ -27,8 +27,7 @@
 #include <logging/log.h>
 
 #include <timeslot.h>
-
-#define CI_TO_US(ci_ms) (1250UL * (ci_ms))
+#include <proprietary_rf.h>
 
 #define LOG_MODULE_NAME peripheral_uart
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
@@ -41,6 +40,8 @@ static struct bt_conn *auth_conn;
 
 static bool nus_ready;
 static bool timeslot_running;
+
+static struct timeslot_config timeslot_config = TS_DEFAULT_CONFIG;
 
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -164,17 +165,17 @@ static void timeslot_err_cb(int err)
 
 static void timeslot_start_cb(void)
 {
-    LOG_DBG("Timeslot start");
+    proprietary_rf_start();
 }
 
 static void timeslot_end_cb(void)
 {
-    LOG_DBG("Timeslot end");
+    proprietary_rf_end();
 }
 
 static void timeslot_skipped_cb(uint8_t count)
 {
-    LOG_INF("Timeslot skipped: %d", count);
+    proprietary_rf_skipped(count);
 }
 
 static void timeslot_stopped_cb(void)
@@ -201,13 +202,22 @@ static struct timeslot_cb timeslot_callbacks = {
 #endif
 };
 
-static struct timeslot_config timeslot_config = TS_DEFAULT_CONFIG;
+static void proprietary_rf_callback(struct esb_payload *tx_payload)
+{
+    LOG_INF("proprietary_rf_cb()");
+}
 
 void main(void)
 {
     int err = 0;
 
     bt_conn_cb_register(&conn_callbacks);
+
+    err = proprietary_rf_init(proprietary_rf_callback);
+    if (err) {
+        LOG_ERR("proprietary_rf_init failed (err: %d)", err);
+        error();
+    }
 
     err = timeslot_open(&timeslot_config, &timeslot_callbacks);
     if (err) {
