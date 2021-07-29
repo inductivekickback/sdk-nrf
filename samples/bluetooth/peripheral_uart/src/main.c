@@ -39,6 +39,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 static struct bt_conn *current_conn;
 static struct bt_conn *auth_conn;
 
+static bool nus_ready;
 static bool timeslot_running;
 
 static const struct bt_data ad[] = {
@@ -92,6 +93,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
         current_conn = NULL;
     }
 
+    nus_ready = false;
     int err = timeslot_stop();
     if (err) {
         LOG_ERR("timeslot_stop failed (err=%d)", err);
@@ -139,9 +141,11 @@ static void bt_nus_enabled_cb(enum bt_nus_send_status status)
     switch (status) {
     case BT_NUS_SEND_STATUS_ENABLED:
         LOG_INF("NUS TX CCCD enabled");
+        nus_ready = true;
         break;
     case BT_NUS_SEND_STATUS_DISABLED:
         LOG_INF("NUX TX CCCD disabled");
+        nus_ready = false;
         break;
     default:
         break;
@@ -235,7 +239,20 @@ void main(void)
         error();
     }
 
+    int index=0;
     for (;;) {
         k_sleep(K_MSEC(100));
+        if (!nus_ready) {
+            continue;
+        }
+        index = (index + 1) % 100;
+        for (int i=0; i < index; i++) {
+            static uint8_t data[] = "NUS DATA SEND!";
+            err = bt_nus_send(current_conn, data, sizeof(data));
+            if (err) {
+                LOG_INF("Sent %d strings", (i+1));
+                break;
+            }
+        }
     }
 }
