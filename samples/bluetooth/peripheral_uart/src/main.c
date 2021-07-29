@@ -32,6 +32,8 @@
 #define LOG_MODULE_NAME peripheral_uart
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
+#define DESIRED_CONN_INTERVAL 28
+
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
 
@@ -117,6 +119,25 @@ static void conn_param_updated(struct bt_conn *conn, uint16_t interval,
             LOG_ERR("timeslot_start failed (err=%d)", err);
         } else {
             timeslot_running = true;
+        }
+    }
+
+    if (DESIRED_CONN_INTERVAL != interval) {
+        LOG_INF("Requesting new Connection Interval");
+        struct bt_le_conn_param param = {
+            .interval_min = DESIRED_CONN_INTERVAL,
+            .interval_max = DESIRED_CONN_INTERVAL,
+            .latency = latency,
+            .timeout = timeout,
+        };
+
+        err = bt_conn_le_param_update(conn, &param);
+        if (err == -EALREADY) {
+            /* Connection parameters are already set. */
+            err = 0;
+        }
+        if (err) {
+            LOG_ERR("bt_conn_le_param_update failed (err=%d)", err);
         }
     }
 }
@@ -249,20 +270,7 @@ void main(void)
         error();
     }
 
-    int index=0;
     for (;;) {
         k_sleep(K_MSEC(100));
-        if (!nus_ready) {
-            continue;
-        }
-        index = (index + 1) % 100;
-        for (int i=0; i < index; i++) {
-            static uint8_t data[] = "NUS DATA SEND!";
-            err = bt_nus_send(current_conn, data, sizeof(data));
-            if (err) {
-                LOG_INF("Sent %d strings", (i+1));
-                break;
-            }
-        }
     }
 }
