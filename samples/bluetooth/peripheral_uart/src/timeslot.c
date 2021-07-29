@@ -374,7 +374,7 @@ static void timeslot_thread_fn(void)
             nrf_gpio_pin_write(REQUEST_PIN, 1);
 #endif
             k_sleep(K_USEC(CONFIG_SDC_MAX_CONN_EVENT_LEN_DEFAULT -
-                               TS_REQUEST_DELAY_US + RNH_DISTANCE_US));
+                               TS_REQUEST_DELAY_US + TS_RNH_DISTANCE_US));
 #if TS_GPIO_DEBUG
             nrf_gpio_pin_write(REQUEST_PIN, 0);
 #endif

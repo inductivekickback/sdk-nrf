@@ -14,8 +14,8 @@ extern "C" {
 #include <mpsl_timeslot.h>
 
 #define TS_LEN_US               25000
-#define RNH_DISTANCE_US         800
-#define TS_REQUEST_DELAY_US     1900
+#define TS_RNH_DISTANCE_US      800
+#define TS_REQUEST_DELAY_US     2600
 
 /**
  * A hardware interrupt vector to use with the Radio Notification feature as well as lowering the
@@ -79,7 +79,7 @@ struct timeslot_config {
     .hfclk             = MPSL_TIMESLOT_HFCLK_CFG_XTAL_GUARANTEED, \
     .timeout_us        = 2000000, /* Default is 2s. */            \
     .safety_margin_us  = 100, /* Default is 100us */              \
-    .skipped_tolerance = 5 /* Default is 5 */                   \
+    .skipped_tolerance = 5 /* Default is 5 */                     \
 }
 
 struct timeslot_cb {
