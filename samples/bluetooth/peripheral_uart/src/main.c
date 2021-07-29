@@ -39,9 +39,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 static struct bt_conn *current_conn;
 static struct bt_conn *auth_conn;
 
-static uint16_t conn_interval;
-static uint16_t next_interval;
-static bool     timeslot_stopping;
+static bool timeslot_running;
 
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -94,7 +92,6 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
         current_conn = NULL;
     }
 
-    conn_interval = 0;
     int err = timeslot_stop();
     if (err) {
         LOG_ERR("timeslot_stop failed (err=%d)", err);
@@ -105,42 +102,18 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 static void conn_param_updated(struct bt_conn *conn, uint16_t interval,
                  uint16_t latency, uint16_t timeout)
 {
+    int err;
+
     /* NOTE: This may be called multiple times at the beginning of the connection. */
     LOG_INF("Connection params updated: (interval=%d, SL=%d, timeout=%d)",
                 interval, latency, timeout);
 
-    int err;
-
-    if (interval >= 12) {
-        if (conn_interval != interval) {
-            if (conn_interval) {
-                next_interval = interval;
-                if (!timeslot_stopping) {
-                    timeslot_stopping = true;
-                    err = timeslot_stop();
-                    if (err) {
-                        LOG_ERR("timeslot_start failed (err=%d)", err);
-                    }
-                }
-            } else {
-                // Just start.
-                conn_interval = interval;
-                err = timeslot_start(TS_LEN_US);
-                if (err) {
-                    LOG_ERR("timeslot_start failed (err=%d)", err);
-                }
-            }
-        }
-    } else {
-        if (conn_interval) {
-            LOG_INF("CI is too short, stopping timeslot");
-            timeslot_stopping = true;
-            err = timeslot_stop();
-            if (err) {
-                LOG_ERR("timeslot_start failed (err=%d)", err);
-            }
+    if (!timeslot_running) {
+        err = timeslot_start(TS_LEN_US);
+        if (err) {
+            LOG_ERR("timeslot_start failed (err=%d)", err);
         } else {
-            LOG_INF("Waiting for longer CI...");
+            timeslot_running = true;
         }
     }
 }
@@ -183,7 +156,6 @@ static struct bt_nus_cb nus_cb = {
 static void timeslot_err_cb(int err)
 {
     LOG_ERR("Timeslot session error: %d", err);
-    error();
 }
 
 static void timeslot_start_cb(void)
@@ -204,16 +176,7 @@ static void timeslot_skipped_cb(uint8_t count)
 static void timeslot_stopped_cb(void)
 {
     LOG_INF("Timeslot stopped");
-    timeslot_stopping = false;
-    if (conn_interval != next_interval) {
-        conn_interval = next_interval;
-        int err = timeslot_start(TS_LEN_US);
-        if (err) {
-            LOG_ERR("timeslot_start failed (err=%d)", err);
-        }
-    } else {
-        conn_interval = 0;
-    }
+    timeslot_running  = false;
 }
 
 #if !TIMESLOT_CALLS_RADIO_IRQHANDLER
