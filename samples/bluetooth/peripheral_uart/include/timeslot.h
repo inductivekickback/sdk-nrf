@@ -16,7 +16,6 @@ extern "C" {
 #define TS_LEN_US               25000
 #define RNH_DISTANCE_US         800
 #define TS_REQUEST_DELAY_US     1900
-#define TS_REQUEST_TOLERANCE_US 300
 
 /**
  * A hardware interrupt vector to use with the Radio Notification feature as well as lowering the
