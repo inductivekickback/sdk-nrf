@@ -271,6 +271,6 @@ void main(void)
     }
 
     for (;;) {
-        k_sleep(K_MSEC(100));
+        k_sleep(K_MSEC(500));
     }
 }
