@@ -16,6 +16,9 @@ extern "C" {
 /* The timeslot length to request once per Connection Interval. Will not be extended. */
 #define TS_LEN_US 25000
 
+/* @brief A timeslot has started. */
+void proprietary_rf_start(void);
+
 /** @brief A timeslot has ended.
  *
  * @note The timeslot will close safety_margin_us earlier than TS_LEN_US.
@@ -29,9 +32,6 @@ void proprietary_rf_end(void);
  * @param[in] count    The number of consecutive skipped timeslots
  */
 void proprietary_rf_skipped(uint8_t count);
-
-/* @brief A timeslot has started. */
-void proprietary_rf_start(void);
 
 #ifdef __cplusplus
 }
