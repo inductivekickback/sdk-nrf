@@ -8,9 +8,6 @@
 #define LOG_MODULE_NAME proprietary_rf
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-#define LED_ON  0
-#define LED_OFF 1
-
 static const struct device *led_port;
 static struct esb_payload   rx_payload;
 static bool                 ready      = true;
