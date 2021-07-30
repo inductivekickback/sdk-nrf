@@ -29,6 +29,12 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <timeslot.h>
 
+/* The radio notification distance in microseconds */
+#define TS_RNH_DISTANCE_US         800
+
+/* The (empirical) distance between a request and the resulting timeslot start */
+#define TS_REQUEST_DELAY_US        2600
+
 #define TIMESLOT_THREAD_STACK_SIZE 768
 #define TIMESLOT_THREAD_PRIORITY   5
 

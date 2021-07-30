@@ -13,14 +13,11 @@ extern "C" {
 
 #include <mpsl_timeslot.h>
 
-#define TS_LEN_US               25000
-#define TS_RNH_DISTANCE_US      800
-#define TS_REQUEST_DELAY_US     2600
-
 /**
  * A hardware interrupt vector to use with the Radio Notification feature as well as lowering the
- * priority of the MPSL callback (Zero Latency IRQ workaround). As of NCS v1.6.0 this doesn't
- * handle MPSL_TIMESLOT_SIGNAL_TIMER0 signals correctly unless it uses priority 4 or higher.
+ * priority of the MPSL callback (Zero Latency IRQ workaround). As of NCS v1.6 this doesn't
+ * handle MPSL_TIMESLOT_SIGNAL_TIMER0 signals correctly unless it uses priority MPSL_LOW_PRIO
+ * or higher.
  */
 #define TIMESLOT_IRQN          QDEC_IRQn
 #define TIMESLOT_IRQ_NODELABEL qdec
@@ -60,7 +57,7 @@ struct timeslot_config {
     /**
      * High frequency clock source, see MPSL_TIMESLOT_HFCLK_CFG.
      */
-    uint8_t  hfclk;        
+    uint8_t hfclk;        
     /**
      * Amount of time before a request times out.
      */
@@ -68,11 +65,11 @@ struct timeslot_config {
     /**
      * Close the timeslot this amount of time before the end to ensure that it closes cleanly.
      */
-    uint32_t  safety_margin_us;
+    uint32_t safety_margin_us;
     /**
      * The number of skipped timeslots before an error is raised.
      */
-    uint8_t   skipped_tolerance;
+    uint8_t skipped_tolerance;
 };
 
 #define TS_DEFAULT_CONFIG { \
