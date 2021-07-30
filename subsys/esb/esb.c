@@ -1516,3 +1516,21 @@ int esb_reuse_pid(uint8_t pipe)
 
 	return 0;
 }
+
+int esb_get_pid(uint8_t pipe, uint8_t *pid)
+{
+	if (CONFIG_ESB_PIPE_COUNT <= pipe) {
+		return -1;
+	}
+	*pid = pids[pipe];
+	return 0;
+}
+
+int esb_set_pid(uint8_t pipe, uint8_t pid)
+{
+	if (CONFIG_ESB_PIPE_COUNT <= pipe) {
+		return -1;
+	}
+	pids[pipe] = pid;
+	return 0;
+}

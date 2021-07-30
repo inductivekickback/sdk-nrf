@@ -8,11 +8,14 @@
 #define LOG_MODULE_NAME proprietary_rf
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
+#define TX_PIPE 0
+
 static const struct device *led_port;
 static struct esb_payload   rx_payload;
 static bool                 ready      = true;
-static struct esb_payload   tx_payload = ESB_CREATE_PAYLOAD(0x00, 0x01, 0x00, 0x03,
-                                                            0x04, 0x05, 0x06, 0x07, 0x08);
+static struct esb_payload   tx_payload = ESB_CREATE_PAYLOAD(TX_PIPE, 0x01, 0x00, 0x03, 0x04,
+                                                                     0x05, 0x06, 0x07, 0x08);
+static uint8_t tx_pipe_pid;
 
 static void esb_cb(struct esb_evt const *event)
 {
@@ -136,6 +139,10 @@ static void leds_update(uint8_t value)
 
 void proprietary_rf_end(void)
 {
+    int err = esb_get_pid(TX_PIPE, &tx_pipe_pid);
+    if (err) {
+        LOG_ERR("esb_get_pid failed (err=%d)", err);
+    }    
     esb_disable();
 }
 
@@ -154,6 +161,11 @@ void proprietary_rf_start(void)
     if (err) {
         LOG_ERR("ESB initialization failed, err %d", err);
         return;
+    }
+
+    err = esb_set_pid(TX_PIPE, tx_pipe_pid);
+    if (err) {
+        LOG_ERR("esb_set_pid failed (err=%d)", err);
     }
 
     tx_payload.noack = false;

@@ -491,6 +491,37 @@ int esb_set_bitrate(enum esb_bitrate bitrate);
  */
 int esb_reuse_pid(uint8_t pipe);
 
+
+/** @brief Get the current packet ID for a specific pipe.
+ *
+ *  The ESB protocol uses a 2-bit sequence number (packet ID) to identify
+ *  retransmitted packets. By default, the packet ID is incremented for every
+ *  uploaded packet. Use this function to retrieve the current PID so it can
+ *  be restored the next time the library is initialized.
+ *
+ *  @param[in] pipe     Pipe.
+ *  @param[in] pid      Pointer for storing the PID.
+ *
+ * @retval 0 If successful.
+ *           Otherwise, a (negative) error code is returned.
+ */
+int esb_get_pid(uint8_t pipe, uint8_t *pid);
+
+/** @brief Set the current packet ID for a specific pipe.
+ *
+ *  The ESB protocol uses a 2-bit sequence number (packet ID) to identify
+ *  retransmitted packets. By default, the packet ID is incremented for every
+ *  uploaded packet. Use this function to restore the PID from before the
+ *  library was disabled.
+ *
+ *  @param[in] pipe     Pipe.
+ *  @param[in] pid      Pointer for storing the PID.
+ *
+ * @retval 0 If successful.
+ *           Otherwise, a (negative) error code is returned.
+ */
+int esb_set_pid(uint8_t pipe, uint8_t pid);
+
 /** @} */
 
 #ifdef __cplusplus
