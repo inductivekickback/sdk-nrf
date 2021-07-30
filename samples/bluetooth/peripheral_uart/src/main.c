@@ -223,22 +223,11 @@ static struct timeslot_cb timeslot_callbacks = {
 #endif
 };
 
-static void proprietary_rf_callback(struct esb_payload *tx_payload)
-{
-    LOG_INF("proprietary_rf_cb()");
-}
-
 void main(void)
 {
     int err = 0;
 
     bt_conn_cb_register(&conn_callbacks);
-
-    err = proprietary_rf_init(proprietary_rf_callback);
-    if (err) {
-        LOG_ERR("proprietary_rf_init failed (err: %d)", err);
-        error();
-    }
 
     err = timeslot_open(&timeslot_config, &timeslot_callbacks);
     if (err) {

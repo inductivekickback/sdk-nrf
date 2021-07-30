@@ -11,8 +11,6 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define LED_ON  0
 #define LED_OFF 1
 
-static proprietary_rf_cb callback;
-
 static const struct device *led_port;
 static struct esb_payload   rx_payload;
 static bool                 ready      = true;
@@ -173,13 +171,4 @@ void proprietary_rf_start(void)
         }
         tx_payload.data[1]++;
     }
-}
-
-int proprietary_rf_init(proprietary_rf_cb cb)
-{
-    if (0 == cb) {
-        return -1;
-    }
-    callback = cb;
-    return 0;
 }
