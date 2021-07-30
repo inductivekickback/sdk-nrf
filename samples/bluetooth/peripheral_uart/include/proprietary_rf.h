@@ -13,14 +13,24 @@ extern "C" {
 
 #include <esb.h>
 
-typedef void (*proprietary_rf_cb)(struct esb_payload *tx_payload);
+/* The timeslot length to request once per Connection Interval. Will not be extended. */
+#define TS_LEN_US 25000
 
-int proprietary_rf_init(proprietary_rf_cb p_cb);
-
+/** @brief A timeslot has ended.
+ *
+ * @note The timeslot will close safety_margin_us earlier than TS_LEN_US.
+ */
 void proprietary_rf_end(void);
 
+/** @brief A timeslot was blocked or cancelled.
+ * 
+ * @note Provided in case the network requires synchnronization, e.g. for channel hopping.
+ * 
+ * @param[in] count    The number of consecutive skipped timeslots
+ */
 void proprietary_rf_skipped(uint8_t count);
 
+/* @brief A timeslot has started. */
 void proprietary_rf_start(void);
 
 #ifdef __cplusplus
