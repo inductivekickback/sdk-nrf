@@ -107,20 +107,10 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 static void conn_param_updated(struct bt_conn *conn, uint16_t interval,
                  uint16_t latency, uint16_t timeout)
 {
-    int err;
-
     /* NOTE: This may be called multiple times at the beginning of the connection. */
     LOG_INF("Connection params updated: (interval=%d, SL=%d, timeout=%d)",
                 interval, latency, timeout);
-
-    if (!timeslot_running) {
-        err = timeslot_start(TS_LEN_US);
-        if (err) {
-            LOG_ERR("timeslot_start failed (err=%d)", err);
-        } else {
-            timeslot_running = true;
-        }
-    }
+    int err;
 
     if (DESIRED_CONN_INTERVAL != interval) {
         LOG_INF("Requesting new Connection Interval");
@@ -139,6 +129,15 @@ static void conn_param_updated(struct bt_conn *conn, uint16_t interval,
         if (err) {
             LOG_ERR("bt_conn_le_param_update failed (err=%d)", err);
         }
+    } else {
+        if (!timeslot_running) {
+            err = timeslot_start(TS_LEN_US);
+            if (err) {
+                LOG_ERR("timeslot_start failed (err=%d)", err);
+            } else {
+                timeslot_running = true;
+            }
+        }        
     }
 }
 
